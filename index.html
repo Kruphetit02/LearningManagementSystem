@@ -1,0 +1,2731 @@
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  
+  
+  <!-- SweetAlert2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+   <!-- ✅ PDFMake CDN - โหลดก่อน -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  
+  <!-- ✅ TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * {
+      font-family: 'Sarabun', sans-serif !important;
+    }
+
+    body, html, input, select, textarea, button, label, span, div, p, h1, h2, h3, h4, h5, h6, th, td {
+      font-family: 'Sarabun', sans-serif !important;
+    }
+
+    body {
+      box-sizing: border-box;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideOut {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(100px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    .pulse-animation { animation: pulse 2s ease-in-out infinite; }
+    .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; }
+    .tab-button { transition: all 0.2s ease; }
+    .tab-button:hover { transform: translateY(-2px); }
+    
+    @view-transition { navigation: auto; }
+  </style>
+</head>
+
+<body class="w-full min-h-full">
+  <div id="app" class="w-full min-h-full">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div style="text-align: center; color: white;">
+        <div style="width: 80px; height: 80px; border: 6px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; margin: 0 auto 2rem; animation: spin 1s linear infinite;"></div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">กำลังโหลดระบบ...</h2>
+        <p style="opacity: 0.8;">กรุณารอสักครู่</p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    const defaultConfig = {
+      background_color: "#f0f4f8",
+      surface_color: "#ffffff",
+      text_color: "#1a202c",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#64748b",
+      font_family: "Sarabun",
+      font_size: 16,
+      site_title: "ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์",
+      welcome_text: "ยินดีต้อนรับสู่ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์",
+      submit_button_text: "ส่งแผนการจัดการเรียนรู้",
+      login_button_text: "เข้าสู่ระบบ"
+    };
+    
+    let syllabusData = [];
+    let currentView = 'home';
+    let filterStatus = 'all';
+    let searchQuery = '';
+    let currentRecordCount = 0;
+    let currentUser = null;
+    let isLogin = true;
+    let hasInitialData = false;
+    let currentPage = 1;
+    let lastSubmittedId = null;
+    let isLoading = true; // เพิ่มตัวแปรนี้
+    const itemsPerPage = 8;
+    
+    const STATUS_COLORS = {
+      'not_submitted': { bg: '#fee', text: '#c00' },
+      'pending': { bg: '#ffeaa7', text: '#d63031' },
+      'approved': { bg: '#d4edda', text: '#155724' },
+      'revision': { bg: '#fff3cd', text: '#856404' }
+    };
+    
+    const STATUS_LABELS = {
+      'not_submitted': 'ยังไม่ส่ง',
+      'pending': 'รอตรวจ',
+      'approved': 'ตรวจแล้ว',
+      'revision': 'ส่งกลับแก้ไข'
+    };
+    
+
+
+    const config = {
+      background_color: "#f0f4f8",
+      surface_color: "#ffffff",
+      text_color: "#1a202c",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#64748b",
+      font_family: "Sarabun",
+      font_size: 16,
+      site_title: "ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์"
+    };
+
+    // ปรับปรุงฟังก์ชัน initializeApp
+function initializeApp() {
+  console.log('=== initializeApp: Starting ===');
+  isLoading = true;
+  renderLoadingScreen();
+
+  // ส่งพารามิเตอร์เฉพาะเมื่อ login แล้ว
+  if (currentUser) {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus(currentUser.role, currentUser.group);
+  } else {
+    // ถ้ายังไม่ login ให้ดึงข้อมูลทั้งหมด
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus();
+  }
+}
+
+// แก้ไขฟังก์ชัน handleDataSuccess
+function handleDataSuccess(data) {
+  console.log('=== Data Received ===');
+  console.log('Data received from server:', data);
+  console.log('Data type:', typeof data);
+  console.log('Is Array:', Array.isArray(data));
+  
+  if (data === undefined || data === null) {
+    console.error('Received null or undefined data');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+    return;
+  }
+  
+  if (Array.isArray(data)) {
+    console.log('Raw data array:', data);
+    syllabusData = data;
+    currentRecordCount = syllabusData.length;
+    console.log('Successfully loaded', syllabusData.length, 'records');
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+  } else if (typeof data === 'object' && data.hasOwnProperty('success') && !data.success) {
+    console.error('Server returned error:', data.message || 'Unknown error');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+    
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่สามารถโหลดข้อมูลได้',
+      text: data.message || 'ไม่พบข้อมูลในระบบหรือเกิดข้อผิดพลาดในการโหลด',
+      confirmButtonText: 'รีเฟรช'
+    }).then(() => {
+      location.reload();
+    });
+  } else {
+    console.warn('Received unexpected data format, initializing empty array');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+  }
+}
+
+function handleDataFailure(error) {
+  console.error('=== Error Loading Data ===');
+  console.error('Error:', error);
+  syllabusData = [];
+  currentRecordCount = 0;
+  hasInitialData = true;
+  isLoading = false;
+  renderApp();
+  
+  Swal.fire({
+    icon: 'warning',
+    title: 'ไม่สามารถโหลดข้อมูลได้',
+    text: error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+    confirmButtonText: 'รีเฟรช',
+  }).then((result) => {
+    if (result.isConfirmed) {
+      location.reload();
+    }
+  });
+}
+
+
+function reloadData() {
+  console.log('Reloading data...');
+  
+  return new Promise((resolve, reject) => {
+    if (currentUser) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (Array.isArray(data)) {
+            syllabusData = data;
+            currentRecordCount = syllabusData.length;
+            resolve(data);
+          } else {
+            syllabusData = [];
+            currentRecordCount = 0;
+            resolve([]);
+          }
+        })
+        .withFailureHandler(reject)
+        .getAllSyllabus(currentUser.role, currentUser.group);
+    } else {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (Array.isArray(data)) {
+            syllabusData = data;
+            currentRecordCount = syllabusData.length;
+            resolve(data);
+          } else {
+            syllabusData = [];
+            currentRecordCount = 0;
+            resolve([]);
+          }
+        })
+        .withFailureHandler(reject)
+        .getAllSyllabus();
+    }
+  });
+}
+
+
+
+function debugData() {
+  console.log('=== Manual Debug ===');
+  console.log('syllabusData:', syllabusData);
+  console.log('Length:', syllabusData ? syllabusData.length : 'undefined');
+  console.log('Current View:', currentView);
+  console.log('Is Loading:', isLoading);
+  console.log('Has Initial Data:', hasInitialData);
+  console.log('Current User:', currentUser);
+  
+  Swal.fire({
+    title: 'ตรวจสอบข้อมูลปัจจุบัน',
+    html: `
+      <div style="text-align: left;">
+        <p><strong>Data Length:</strong> ${syllabusData ? syllabusData.length : 0}</p>
+        <p><strong>Current View:</strong> ${currentView}</p>
+        <p><strong>Is Loading:</strong> ${isLoading}</p>
+        <p><strong>Has Initial Data:</strong> ${hasInitialData}</p>
+        <p><strong>Current User:</strong> ${currentUser ? currentUser.username : 'Not logged in'}</p>
+        ${syllabusData && syllabusData.length > 0 ? 
+          `<p><strong>First Record:</strong> ${JSON.stringify(syllabusData[0])}</p>` : 
+          '<p><strong>No records available</strong></p>'
+        }
+      </div>
+    `,
+    width: 600
+  });
+}
+
+
+
+
+// เพิ่มฟังก์ชันนี้ใหม่
+function reloadData() {
+  console.log('Reloading data...');
+  
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        console.log('Data reloaded:', data);
+        
+        if (Array.isArray(data)) {
+          syllabusData = data;
+          currentRecordCount = syllabusData.length;
+          console.log('Updated syllabusData with', syllabusData.length, 'records');
+          resolve(data);
+        } else {
+          console.warn('Reloaded data is not an array');
+          syllabusData = [];
+          currentRecordCount = 0;
+          resolve([]);
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Failed to reload data:', error);
+        reject(error);
+      })
+      .getAllSyllabus();
+  });
+}
+    
+    function renderLoadingScreen() {
+  const config = getConfig();
+  
+  return `
+    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: ${config.background_color};">
+      <div style="width: 80px; height: 80px; border: 6px solid #f3f3f3; border-top: 6px solid ${config.primary_action_color}; border-radius: 50%; animation: spin 1.5s linear infinite;"></div>
+      <h2 style="margin-top: 1.5rem; font-size: 1.25rem; color: ${config.text_color};">กำลังโหลดข้อมูล...</h2>
+      <p style="margin-top: 0.5rem; color: ${config.text_color}; opacity: 0.7;">กรุณารอสักครู่</p>
+      
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
+  `;
+}
+    
+    function getConfig() {
+      return defaultConfig;
+    }
+    
+    // ปรับปรุงฟังก์ชัน renderApp
+    function renderApp() {
+      console.log('Rendering app. Current view:', currentView, 'Loading:', isLoading);
+  
+      const config = getConfig();
+      const app = document.getElementById('app');
+      
+      // ถ้ายังโหลดอยู่ ให้แสดงหน้า loading
+      if (isLoading || !hasInitialData) {
+        renderLoadingScreen();
+        return;
+      }
+      
+      let content = '';
+      
+      try {
+        if (currentView === 'home') {
+          content = renderHomePage(config, config.font_size);
+        } else if (currentView === 'submit') {
+          content = renderSubmitForm(config, config.font_size);
+        } else if (currentView === 'dashboard') {
+          if (!currentUser) {
+            currentView = 'login';
+            content = renderLoginPage(config, config.font_size);
+          } else {
+            content = renderDashboard(config, config.font_size);
+          }
+        } else if (currentView === 'login') {
+          content = renderLoginPage(config, config.font_size);
+        } else if (currentView === 'stats') {
+          content = renderStatsPage(config, config.font_size);
+        }
+        
+        app.innerHTML = content;
+        attachEventListeners();
+      } catch (error) {
+        console.error('Error rendering app:', error);
+        app.innerHTML = `
+          <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: ${config.background_color};">
+            <div style="text-align: center; max-width: 500px; padding: 2rem;">
+              <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+              <h2 style="font-size: ${config.font_size * 1.5}px; color: ${config.text_color}; margin-bottom: 1rem;">เกิดข้อผิดพลาด</h2>
+              <p style="font-size: ${config.font_size}px; color: ${config.text_color}; opacity: 0.7; margin-bottom: 1.5rem;">${error.message}</p>
+              <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background-color: ${config.primary_action_color}; color: white; border: none; border-radius: 0.5rem; font-size: ${config.font_size}px; cursor: pointer;">
+                รีเฟรชหน้าเว็บ
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+
+// เพิ่มฟังก์ชันสำหรับรีโหลดข้อมูลทุกๆ นาที
+function setupAutoRefresh() {
+  setInterval(() => {
+    console.log('Auto-refreshing data...');
+    isLoading = true;
+    
+    if (currentUser) {
+      google.script.run
+        .withSuccessHandler(handleDataSuccess)
+        .withFailureHandler(handleDataFailure)
+        .getAllSyllabus(currentUser.role, currentUser.group);
+    } else {
+      google.script.run
+        .withSuccessHandler(handleDataSuccess)
+        .withFailureHandler(handleDataFailure)
+        .getAllSyllabus();
+    }
+  }, 60000); // ทุกๆ 60 วินาที
+}
+
+// แก้ไขฟังก์ชัน initializeApp ให้เรียกใช้ auto-refresh
+function initializeApp() {
+  console.log('=== initializeApp: Starting ===');
+  isLoading = true;
+  renderLoadingScreen();
+
+  if (currentUser) {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus(currentUser.role, currentUser.group);
+  } else {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus();
+  }
+  
+  // เพิ่มการตั้งค่า auto-refresh
+  setupAutoRefresh();
+}
+
+    // ปรับปรุงฟังก์ชัน renderHomePage - เพิ่มการตรวจสอบข้อมูล
+    function renderHomePage(config, baseSize) {
+      const bgColor = config.background_color;
+      const surfaceColor = config.surface_color;
+      const textColor = config.text_color;
+      const primaryColor = config.primary_action_color;
+      const secondaryColor = config.secondary_action_color;
+      
+      // ป้องกันข้อผิดพลาดจาก syllabusData
+      const totalCount = syllabusData ? syllabusData.length : 0;
+      const pendingCount = syllabusData ? syllabusData.filter(s => s.status === 'pending').length : 0;
+      const approvedCount = syllabusData ? syllabusData.filter(s => s.status === 'approved').length : 0;
+      
+      return `
+        <div class="w-full min-h-full" style="background-color: ${bgColor};">
+          <!-- Navbar -->
+          <nav style="background: linear-gradient(135deg, #4a90e2, #357abd); box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;">
+            <div style="max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+  <img src="https://img1.pic.in.th/images/wichakan.png"
+       alt="Site Banner"
+       style="height: ${baseSize * 4.5}px; border-radius: 6px;">
+  
+  <h1 style="font-size: ${baseSize * 1.25}px; 
+             font-weight: 700; 
+             color: white; 
+             margin: 0;">
+      ${config.site_title || defaultConfig.site_title}
+  </h1>
+</div>
+
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <button onclick="handleNavigation('home')" style="padding: 0.5rem 1rem; background-color: rgba(255,255,255,0.15); color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 600; cursor: pointer; transition: all 0.2s; border-radius: 0.5rem;">
+                  หน้าหลัก
+                </button>
+                <button onclick="handleNavigation('submit')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  ส่งเอกสาร
+                </button>
+                <button onclick="handleNavigation('stats')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  สถิติ
+                </button>
+                <button onclick="handleNavigation('${currentUser ? 'dashboard' : 'login'}')" style="padding: 0.75rem 1.5rem; background-color: rgba(255,255,255,0.9); color: #357abd; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  ${currentUser ? 'Dashboard' : config.login_button_text}
+                </button>
+              </div>
+            </div>
+          </nav>
+          <div class="fade-in" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+            <header style="margin-bottom: 3rem; text-align: center; padding-top: 2rem;">
+  <h2 style="font-size: ${baseSize * 2.5}px; font-weight: 700; color: ${textColor}; margin-bottom: 1rem;">
+    ${config.welcome_text}
+  </h2>
+
+  <p
+    style="
+      font-size: ${baseSize * 1.1}px;
+      color: ${textColor};
+      padding: 0.4rem 1.2rem;
+      border: 2px solid #22c55e; /* สีเขียว */
+      border-radius: 9999px; /* ทำให้เป็นแคปซูล */
+      display: inline-block;
+      margin-top: 0.5rem;
+    "
+  >
+    จัดการแผนการเรียนรู้ได้อย่างมีประสิทธิภาพ
+  </p>
+</header>
+
+            <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 3rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+              <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 600; color: ${textColor}; margin-bottom: 1rem;">
+                ${config.welcome_text}
+              </h2>
+              <p style="font-size: ${baseSize}px; color: ${textColor}; opacity: 0.8; line-height: 1.6; margin-bottom: 2rem;">
+                ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ ช่วยให้การส่งและตรวจสอบเอกสารเป็นไปอย่างรวดเร็วและมีประสิทธิภาพ
+              </p>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                <div style="padding: 1.5rem; background-color: ${bgColor}; border-radius: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <i class='bx bxs-cloud-upload' style="font-size: ${baseSize * 1.8}px; color: ${primaryColor};"></i>
+                    <div style="font-size: ${baseSize * 1.2}px; font-weight: 600; color: ${primaryColor};">ส่งเอกสารง่าย</div>
+                  </div>
+                  <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8;">กรอกข้อมูลและอัปโหลดไฟล์ได้ทันที</p>
+                </div>
+                <div style="padding: 1.5rem; background-color: ${bgColor}; border-radius: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <i class='bx bxs-time-five' style="font-size: ${baseSize * 1.8}px; color: ${primaryColor};"></i>
+                    <div style="font-size: ${baseSize * 1.2}px; font-weight: 600; color: ${primaryColor};">ติดตามสถานะ</div>
+                  </div>
+                  <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8;">ตรวจสอบความคืบหน้าได้ตลอดเวลา</p>
+                </div>
+                <div style="padding: 1.5rem; background-color: ${bgColor}; border-radius: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <i class='bx bxs-bar-chart-alt-2' style="font-size: ${baseSize * 1.8}px; color: ${primaryColor};"></i>
+                    <div style="font-size: ${baseSize * 1.2}px; font-weight: 600; color: ${primaryColor};">รายงานครบถ้วน</div>
+                  </div>
+                  <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8;">ส่งออกข้อมูลสำหรับการวิเคราะห์</p>
+                </div>
+              </div>
+              <button onclick="handleNavigation('submit')" style="width: 100%; padding: 1rem; background-color: ${primaryColor}; color: white; border-radius: 0.5rem; font-size: ${baseSize * 1.1}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;">
+                ${config.submit_button_text}
+              </button>
+            </div>
+           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+              <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 600; color: ${textColor}; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class='bx bxs-star' style="font-size: ${baseSize * 1.3}px; color: #fbbf24;"></i>
+                  ฟีเจอร์หลัก
+                </h3>
+                <ul style="list-style: none; padding: 0;">
+                  <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; margin-bottom: 0.75rem; padding-left: 2rem; position: relative; display: flex; align-items: center;">
+                    <i class='bx bx-search-alt' style="position: absolute; left: 0; font-size: ${baseSize * 1.2}px; color: ${primaryColor};"></i>
+                    ระบบค้นหาและตัวกรอง
+                  </li>
+                  <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; margin-bottom: 0.75rem; padding-left: 2rem; position: relative; display: flex; align-items: center;">
+                    <i class='bx bx-file' style="position: absolute; left: 0; font-size: ${baseSize * 1.2}px; color: ${primaryColor};"></i>
+                    แบบฟอร์มออนไลน์
+                  </li>
+                  <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; margin-bottom: 0.75rem; padding-left: 2rem; position: relative; display: flex; align-items: center;">
+                    <i class='bx bx-git-branch' style="position: absolute; left: 0; font-size: ${baseSize * 1.2}px; color: ${primaryColor};"></i>
+                    ระบบจัดการเวอร์ชัน
+                  </li>
+                  <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; margin-bottom: 0.5rem; padding-left: 2rem; position: relative; display: flex; align-items: center;">
+                    <i class='bx bx-envelope' style="position: absolute; left: 0; font-size: ${baseSize * 1.2}px; color: ${primaryColor};"></i>
+                    แจ้งเตือนอีเมล
+                  </li>
+                </ul>
+              </div>
+
+              <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 600; color: ${textColor}; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class='bx bxs-line-chart' style="font-size: ${baseSize * 1.3}px; color: #10b981;"></i>
+                  สถิติระบบ
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; display: flex; align-items: center; gap: 0.5rem;">
+                      <i class='bx bxs-folder' style="font-size: ${baseSize * 1.1}px; color: ${primaryColor};"></i>
+                      ทั้งหมด:
+                    </span>
+                    <span style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: ${primaryColor};">${syllabusData.length}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; display: flex; align-items: center; gap: 0.5rem;">
+                      <i class='bx bxs-hourglass' style="font-size: ${baseSize * 1.1}px; color: #d63031;"></i>
+                      รอตรวจ:
+                    </span>
+                    <span style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: #d63031;">${syllabusData.filter(s => s.status === 'pending').length}</span>
+                  </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; display: flex; align-items: center; gap: 0.5rem;">
+                      <i class='bx bxs-check-circle' style="font-size: ${baseSize * 1.1}px; color: #155724;"></i>
+                      ตรวจแล้ว:
+                    </span>
+                    <span style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: #155724;">${syllabusData.filter(s => s.status === 'approved').length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <footer style="background-color: ${surfaceColor}; margin-top: 4rem; padding: 2rem; border-top: 1px solid ${bgColor};">
+            <div style="max-width: 1200px; margin: 0 auto; text-align: center;">
+              <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">
+                พัฒนาโดย <strong style="color: ${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @canva AI
+              </p>
+              <p style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.5;">
+                © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+              </p>
+            </div>
+          </footer>
+        </div>
+      `;
+    }
+
+    function renderLoginPage(config, baseSize) {
+      const bgColor = config.background_color;
+      const surfaceColor = config.surface_color;
+      const textColor = config.text_color;
+      const primaryColor = config.primary_action_color;
+      const secondaryColor = config.secondary_action_color;
+      
+      return `
+        <div class="w-full min-h-full" style="background: linear-gradient(135deg, ${primaryColor}15, ${secondaryColor}15); min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+          <div class="fade-in" style="width: 100%; max-width: 450px; margin: 2rem; padding: 3rem; background-color: ${surfaceColor}; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <i class='bx ${isLogin ? 'bx-log-in-circle' : 'bx-user-plus'}' style="font-size: ${baseSize * 3}px; color: ${primaryColor}; margin-bottom: 1rem;"></i>
+              <h2 style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: ${textColor}; margin-bottom: 0.5rem;">
+                ${isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียนใช้งาน'}
+              </h2>
+              <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.6;">
+                ${config.site_title || defaultConfig.site_title}
+              </p>
+            </div>
+            <form id="authForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
+              ${!isLogin ? `
+                <div>
+                  <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                    ชื่อ-นามสกุล <span style="color: red;">*</span>
+                  </label>
+                  <input type="text" id="fullname" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+                </div>
+                <div>
+                  <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                    อีเมล <span style="color: red;">*</span>
+                  </label>
+                  <input type="email" id="email" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+                </div>
+              ` : ''}
+              <div>
+                <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                  ${isLogin ? 'ชื่อผู้ใช้หรืออีเมล' : 'ชื่อผู้ใช้'} <span style="color: red;">*</span>
+                </label>
+                <input type="text" id="username" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+              </div>
+              ${!isLogin ? `
+                <div>
+                  <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                    กลุ่มการเรียน <span style="color: red;">*</span>
+                  </label>
+                  <select id="userGroup" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+                    <option value="">เลือกกลุ่มการเรียน</option>
+                    <option value="สาขาสุขภาพดิจิทัล">สาขาสุขภาพดิจิทัล</option>
+                    <option value="สาขาชีวการแพทย์">สาขาชีวการแพทย์</option>
+                    <option value="สาขาเทคโนโลยีสุขภาพ">สาขาเทคโนโลยีสุขภาพ</option>
+                  </select>
+                </div>
+              ` : ''}
+              <div>
+                <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                  รหัสผ่าน <span style="color: red;">*</span>
+                </label>
+                <input type="password" id="password" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+              </div>
+              ${!isLogin ? `
+                <div>
+                  <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                    ยืนยันรหัสผ่าน <span style="color: red;">*</span>
+                  </label>
+                  <input type="password" id="confirmPassword" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='${primaryColor}'" onblur="this.style.borderColor='${bgColor}'">
+                </div>
+              ` : ''}
+              <button type="submit" id="authBtn" style="width: 100%; padding: 1rem; background-color: ${primaryColor}; color: white; border-radius: 0.5rem; font-size: ${baseSize * 1.1}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                ${isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียนใช้งาน'}
+              </button>
+              <div id="authMessage" style="display: none; margin-top: -0.5rem;"></div>
+            </form>
+            <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid ${bgColor};">
+              <button onclick="toggleAuthMode()" style="background: none; border: none; color: ${primaryColor}; font-size: ${baseSize * 0.875}px; font-weight: 600; cursor: pointer; padding: 0.5rem;">
+                ${isLogin ? 'ยังไม่มีบัญชี? ลงทะเบียนใช้งาน' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
+              </button>
+              <br>
+              <button onclick="handleNavigation('home')" style="background: none; border: none; color: ${secondaryColor}; font-size: ${baseSize * 0.875}px; cursor: pointer; padding: 0.5rem; margin-top: 0.5rem;">
+                ← กลับหน้าหลัก
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function renderSubmitForm(config, baseSize) {
+      const bgColor = config.background_color;
+      const surfaceColor = config.surface_color;
+      const textColor = config.text_color;
+      const primaryColor = config.primary_action_color;
+      const secondaryColor = config.secondary_action_color;
+      
+      return `
+        <div class="w-full min-h-full" style="background-color: ${bgColor};">
+          <!-- Navbar -->
+          <nav style="background: linear-gradient(135deg, #6b8e23, #556b2f); box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;">
+            <div style="max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+  <img src="https://img1.pic.in.th/images/wichakan.png"
+       alt="Site Banner"
+       style="height: ${baseSize * 4.5}px; border-radius: 6px;">
+  
+  <h1 style="font-size: ${baseSize * 1.25}px; 
+             font-weight: 700; 
+             color: white; 
+             margin: 0;">
+      ${config.site_title || defaultConfig.site_title}
+  </h1>
+</div>
+
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <button onclick="handleNavigation('home')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  หน้าหลัก
+                </button>
+                <button onclick="handleNavigation('submit')" style="padding: 0.5rem 1rem; background-color: rgba(255,255,255,0.2); color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 600; cursor: pointer; transition: all 0.2s; border-radius: 0.5rem;">
+                  ส่งเอกสาร
+                </button>
+                <button onclick="handleNavigation('stats')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  สถิติ
+                </button>
+                <button onclick="handleNavigation('${currentUser ? 'dashboard' : 'login'}')" style="padding: 0.75rem 1.5rem; background-color: rgba(255,255,255,0.9); color: #556b2f; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  ${currentUser ? 'Dashboard' : config.login_button_text}
+                </button>
+              </div>
+            </div>
+          </nav>
+          <div class="fade-in" style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <div style="display: inline-block; padding: 0.5rem 1.5rem; background: linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10); border-radius: 2rem; margin-bottom: 1rem;">
+                <span style="font-size: ${baseSize * 0.875}px; color: ${primaryColor}; font-weight: 600;">📝 แบบฟอร์มนำส่งเอกสาร</span>
+              </div>
+              <h2 style="font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor}; margin-bottom: 0.5rem;">
+                แบบฟอร์มนำส่งประมวลการสอน
+              </h2>
+              <p style="font-size: ${baseSize}px; color: ${textColor}; opacity: 0.7;">
+                กรุณากรอกข้อมูลให้ครบถ้วนและตรวจสอบความถูกต้องก่อนนำส่ง
+              </p>
+            </div>
+            <div style="background-color: ${surfaceColor}; border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 3px solid ${primaryColor}20;">
+              <form id="syllabusForm" style="display: flex; flex-direction: column; gap: 2rem;">
+                <div style="background: linear-gradient(135deg, ${primaryColor}08, ${primaryColor}05); padding: 1.5rem; border-radius: 1rem; border-left: 4px solid ${primaryColor};">
+                  <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: ${primaryColor}; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="background-color: ${primaryColor}; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: ${baseSize * 0.875}px;">1</span>
+                    ข้อมูลรายวิชา
+                  </h3>
+                  <div style="display: grid; gap: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+                      <div>
+                        <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                          รหัสวิชา <span style="color: #dc3545;">*</span>
+                        </label>
+                        <input type="text" id="courseCode" required placeholder="เช่น ว33106" style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${primaryColor}'; this.style.boxShadow='0 0 0 3px ${primaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                      </div>
+                      <div>
+                        <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                          ชื่อรายวิชา <span style="color: #dc3545;">*</span>
+                        </label>
+                        <input type="text" id="courseName" required placeholder="เช่น วิทยาการคำนวณ 3" style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${primaryColor}'; this.style.boxShadow='0 0 0 3px ${primaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                      </div>
+                    </div>
+                    <div>
+                      <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                        อาจารย์ผู้สอน <span style="color: #dc3545;">*</span>
+                      </label>
+                      <input type="text" id="instructor" required placeholder="เช่น นายชัยรัตน์ มานิช" style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${primaryColor}'; this.style.boxShadow='0 0 0 3px ${primaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                    </div>
+                  </div>
+                </div>
+                <div style="background: linear-gradient(135deg, ${secondaryColor}08, ${secondaryColor}05); padding: 1.5rem; border-radius: 1rem; border-left: 4px solid ${secondaryColor};">
+                  <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: ${secondaryColor}; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="background-color: ${secondaryColor}; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: ${baseSize * 0.875}px;">2</span>
+                    ข้อมูลภาคการศึกษา
+                  </h3>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div>
+                      <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                        ภาคเรียน <span style="color: #dc3545;">*</span>
+                      </label>
+                      <select id="semester" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${secondaryColor}'; this.style.boxShadow='0 0 0 3px ${secondaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                        <option value="">เลือก</option>
+                        <option value="1">ภาคเรียนที่ 1</option>
+                        <option value="2">ภาคเรียนที่ 2</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                        ปีการศึกษา <span style="color: #dc3545;">*</span>
+                      </label>
+                      <input type="text" id="academicYear" required placeholder="2569" style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${secondaryColor}'; this.style.boxShadow='0 0 0 3px ${secondaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                    </div>
+                    <div>
+                      <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                        กลุ่มสาระการเรียนรู้ <span style="color: #dc3545;">*</span>
+                      </label>
+                      <select id="group" required style="width: 100%; padding: 0.875rem; border: 2px solid ${bgColor}; border-radius: 0.75rem; font-size: ${baseSize}px; color: ${textColor}; background-color: white; transition: all 0.2s;" onfocus="this.style.borderColor='${secondaryColor}'; this.style.boxShadow='0 0 0 3px ${secondaryColor}20'" onblur="this.style.borderColor='${bgColor}'; this.style.boxShadow='none'">
+                        <option value="">เลือกกลุ่มสาระการเรียนรู้</option>
+                        <option value="ภาษาไทย">ภาษาไทย</option>
+                        <option value="คณิตศาสตร์">คณิตศาสตร์</option>
+                        <option value="วิทยาศาสตร์และเทคโนโลยี">วิทยาศาสตร์และเทคโนโลยี</option>
+                        <option value="สังคมศึกษา ศาสนา และวัฒนธรรม">สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+                        <option value="สุขศึกษาและพลศึกษา">สุขศึกษาและพลศึกษา</option>
+                        <option value="ศิลปะ">ศิลปะ</option>
+                        <option value="การงานอาชีพ">การงานอาชีพ</option>
+                        <option value="ภาษาต่างประเทศ">ภาษาต่างประเทศ</option>                 
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div style="background: linear-gradient(135deg, #f59e0b15, #f59e0b08); padding: 1.5rem; border-radius: 1rem; border-left: 4px solid #f59e0b;">
+                  <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 700; color: #f59e0b; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="background-color: #f59e0b; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: ${baseSize * 0.875}px;">3</span>
+                    เอกสารแนบ
+                  </h3>
+                  <div style="position: relative; padding: 2rem; background-color: white; border-radius: 0.75rem; border: 2px dashed #f59e0b; text-align: center; transition: all 0.3s;" onmouseover="this.style.borderColor='#d97706'; this.style.backgroundColor='#fef3c7'" onmouseout="this.style.borderColor='#f59e0b'; this.style.backgroundColor='white'">
+                    <div style="font-size: ${baseSize * 2.5}px; margin-bottom: 1rem;">📄</div>
+                    <p style="font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                      อัปโหลดไฟล์ประมวลการสอน
+                    </p>
+                    <p style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7; margin-bottom: 1rem;">
+                      รองรับไฟล์ PDF และ DOCX (ขนาดไม่เกิน 10MB)
+                    </p>
+                    <input type="file" id="fileUpload" accept=".pdf,.docx" style="font-size: ${baseSize * 0.875}px; color: ${textColor};">
+                  </div>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                  <button type="submit" id="submitBtn" style="flex: 1; padding: 1.25rem; background: linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd); color: white; border-radius: 0.75rem; font-size: ${baseSize * 1.1}px; font-weight: 700; border: none; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 12px ${primaryColor}40;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px ${primaryColor}60'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px ${primaryColor}40'">
+                    ✓ ยืนยันและส่งเอกสาร
+                  </button>
+                </div>
+              </form>
+              <div id="submitMessage" style="margin-top: 1.5rem; display: none;"></div>
+            </div>
+            <div style="margin-top: 2rem; padding: 1.5rem; background-color: ${surfaceColor}; border-radius: 1rem; border-left: 4px solid #3b82f6;">
+              <h4 style="font-size: ${baseSize}px; font-weight: 600; color: ${textColor}; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                ℹ️ ข้อมูลที่ควรทราบ
+              </h4>
+              <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; padding-left: 1.5rem; position: relative;">
+                  <span style="position: absolute; left: 0;">•</span>
+                  กรอกข้อมูลให้ครบถ้วนและตรวจสอบความถูกต้องก่อนส่ง
+                </li>
+                <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; padding-left: 1.5rem; position: relative;">
+                  <span style="position: absolute; left: 0;">•</span>
+                  หลังจากส่งเอกสารแล้ว สามารถพิมพ์แบบฟอร์มเป็น PDF ได้ทันที
+                </li>
+                <li style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.8; padding-left: 1.5rem; position: relative;">
+                  <span style="position: absolute; left: 0;">•</span>
+                  ระบบจะส่งอีเมลแจ้งเตือนเมื่อมีการตรวจสอบเอกสาร
+                </li>
+              </ul>
+            </div>
+          </div>
+          <footer style="background-color: ${surfaceColor}; margin-top: 4rem; padding: 2rem; border-top: 1px solid ${bgColor};">
+            <div style="max-width: 900px; margin: 0 auto; text-align: center;">
+              <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">
+                พัฒนาโดย <strong style="color: ${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @canva AI
+              </p>
+              <p style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.5;">
+                © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+              </p>
+            </div>
+          </footer>
+        </div>
+      `;
+    }
+    
+    function renderStatsPage(config, baseSize) {
+      const bgColor = config.background_color;
+      const surfaceColor = config.surface_color;
+      const textColor = config.text_color;
+      const primaryColor = config.primary_action_color;
+      const secondaryColor = config.secondary_action_color;
+      
+      const stats = {
+        total: syllabusData.length,
+        pending: syllabusData.filter(s => s.status === 'pending').length,
+        approved: syllabusData.filter(s => s.status === 'approved').length,
+        revision: syllabusData.filter(s => s.status === 'revision').length,
+        not_submitted: syllabusData.filter(s => s.status === 'not_submitted').length
+      };
+      
+      const total = stats.total || 1;
+      const pendingPercent = (stats.pending / total) * 100;
+      const approvedPercent = (stats.approved / total) * 100;
+      const revisionPercent = (stats.revision / total) * 100;
+      const notSubmittedPercent = (stats.not_submitted / total) * 100;
+      
+      const semesterStats = {};
+      syllabusData.forEach(item => {
+        const key = `${item.semester}/${item.academic_year}`;
+        if (!semesterStats[key]) {
+          semesterStats[key] = { pending: 0, approved: 0, revision: 0, not_submitted: 0 };
+        }
+        semesterStats[key][item.status] = (semesterStats[key][item.status] || 0) + 1;
+      });
+      
+      const semesterKeys = Object.keys(semesterStats).slice(0, 6);
+      const maxValue = Math.max(...semesterKeys.map(key =>
+        Object.values(semesterStats[key]).reduce((a, b) => a + b, 0)
+      ), 1);
+      
+      return `
+        <div class="w-full min-h-full" style="background-color: ${bgColor};">
+          <nav style="background: linear-gradient(135deg, #9b59b6, #8e44ad); box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;">
+            <div style="max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h1 style="font-size: ${baseSize * 1.25}px; font-weight: 700; color: white; margin: 0;">
+                  ${config.site_title}
+                </h1>
+              </div>
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <button onclick="handleNavigation('home')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  หน้าหลัก
+                </button>
+                <button onclick="handleNavigation('submit')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  ส่งเอกสาร
+                </button>
+                <button onclick="handleNavigation('stats')" style="padding: 0.5rem 1rem; background-color: rgba(255,255,255,0.2); color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 600; cursor: pointer; transition: all 0.2s; border-radius: 0.5rem;">
+                  สถิติ
+                </button>
+                <button onclick="handleNavigation('${currentUser ? 'dashboard' : 'login'}')" style="padding: 0.75rem 1.5rem; background-color: rgba(255,255,255,0.9); color: #8e44ad; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  ${currentUser ? 'Dashboard' : config.login_button_text}
+                </button>
+              </div>
+            </div>
+          </nav>
+          <div class="fade-in" style="max-width: 1400px; margin: 0 auto; padding: 2rem;">
+            <div style="margin-bottom: 2rem; padding-top: 1rem;">
+ <h2
+  class="flex items-center gap-2"
+  style="font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor};"
+>
+  <i class='bx bxs-doughnut-chart text-orange-500'></i>
+  สถิติและรายงาน
+</h2>
+
+
+  <p
+    style="
+      font-size: ${baseSize}px;
+      color: ${textColor};
+      padding: 0.35rem 1rem;
+      border: 2px solid #f97316; /* สีส้ม */
+      border-radius: 9999px; /* แคปซูล */
+      display: inline-block;
+      margin-top: 0.5rem;
+      opacity: 0.9;
+    "
+  >
+    ภาพรวมข้อมูลประมวลการสอนทั้งหมด
+  </p>
+</div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+              <div style="background: linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd); padding: 1.25rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white;">
+                <div style="font-size: ${baseSize * 0.875}px; opacity: 0.9; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class='bx bxs-folder-open' style="font-size: ${baseSize * 1.1}px;"></i>
+                  ทั้งหมด
+                </div>
+                <div style="font-size: ${baseSize * 2}px; font-weight: 700; margin-bottom: 0.5rem;">${stats.total}</div>
+                <div style="width: 100%; height: 6px; background-color: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden; margin-bottom: 0.25rem;">
+                  <div style="width: 100%; height: 100%; background-color: white; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="font-size: ${baseSize * 0.7}px; opacity: 0.9;">100%</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #ffc107, #ff9800); padding: 1.25rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white;">
+                <div style="font-size: ${baseSize * 0.875}px; opacity: 0.9; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class='bx bxs-time' style="font-size: ${baseSize * 1.1}px;"></i>
+                  รอตรวจ
+                </div>
+                <div style="font-size: ${baseSize * 2}px; font-weight: 700; margin-bottom: 0.5rem;">${stats.pending}</div>
+                <div style="width: 100%; height: 6px; background-color: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden; margin-bottom: 0.25rem;">
+                  <div style="width: ${pendingPercent}%; height: 100%; background-color: white; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="font-size: ${baseSize * 0.7}px; opacity: 0.9;">${pendingPercent.toFixed(1)}%</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #28a745, #20c997); padding: 1.25rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white;">
+                <div style="font-size: ${baseSize * 0.8}px; opacity: 0.9; margin-bottom: 0.5rem;">ตรวจแล้ว</div>
+                <div style="font-size: ${baseSize * 2}px; font-weight: 700; margin-bottom: 0.5rem;">${stats.approved}</div>
+                <div style="width: 100%; height: 6px; background-color: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden; margin-bottom: 0.25rem;">
+                  <div style="width: ${approvedPercent}%; height: 100%; background-color: white; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="font-size: ${baseSize * 0.7}px; opacity: 0.9;">${approvedPercent.toFixed(1)}%</div>
+              </div>
+              <div style="background: linear-gradient(135deg, #fd7e14, #dc3545); padding: 1.25rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white;">
+                <div style="font-size: ${baseSize * 0.875}px; opacity: 0.9; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class='bx bxs-edit' style="font-size: ${baseSize * 1.1}px;"></i>
+                  ส่งกลับแก้ไข
+                </div>
+                <div style="font-size: ${baseSize * 2}px; font-weight: 700; margin-bottom: 0.5rem;">${stats.revision}</div>
+                <div style="width: 100%; height: 6px; background-color: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden; margin-bottom: 0.25rem;">
+                  <div style="width: ${revisionPercent}%; height: 100%; background-color: white; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="font-size: ${baseSize * 0.7}px; opacity: 0.9;">${revisionPercent.toFixed(1)}%</div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+              <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                      <i class='bx bxs-bar-chart-alt-2' style="font-size: ${baseSize * 2.8}px; color: ${primaryColor};"></i>
+                      <h3 style="font-size: ${baseSize * 1.5}px;
+                                font-weight: 700;
+                                color: ${textColor};
+                                margin: 0;">
+                        สถิติตามภาคเรียน
+                      </h3>
+                    </div>
+                  <div style="position: relative; height: 300px;">
+                  ${semesterKeys.length === 0 ? `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: ${textColor}; opacity: 0.5;">
+                      ไม่มีข้อมูล
+                    </div>
+                  ` : `
+                    <svg width="100%" height="100%" viewBox="0 0 500 300" style="overflow: visible;">
+                      ${[0, 25, 50, 75, 100].map((val, i) => `
+                        <text x="30" y="${280 - (val * 2.4)}" font-size="12" fill="${textColor}" opacity="0.6" text-anchor="end">${Math.round(maxValue * val / 100)}</text>
+                        <line x1="40" y1="${280 - (val * 2.4)}" x2="480" y2="${280 - (val * 2.4)}" stroke="${textColor}" opacity="0.1" stroke-width="1"/>
+                      `).join('')}
+                      ${semesterKeys.map((key, index) => {
+                        const x = 60 + (index * 70);
+                        const semData = semesterStats[key];
+                        const total = Object.values(semData).reduce((a, b) => a + b, 0);
+                        const barHeight = (total / maxValue) * 240;
+                        
+                        const pendingHeight = (semData.pending / total) * barHeight;
+                        const approvedHeight = (semData.approved / total) * barHeight;
+                        const revisionHeight = (semData.revision / total) * barHeight;
+                        const notSubmittedHeight = (semData.not_submitted / total) * barHeight;
+                        
+                        let currentY = 280;
+                        
+                        return `
+                          <rect x="${x}" y="${currentY - notSubmittedHeight}" width="50" height="${notSubmittedHeight}" fill="#dc3545" opacity="0.8" rx="2"/>
+                          ${(() => { currentY -= notSubmittedHeight; return ''; })()}
+                          <rect x="${x}" y="${currentY - pendingHeight}" width="50" height="${pendingHeight}" fill="#ffc107" opacity="0.8" rx="2"/>
+                          ${(() => { currentY -= pendingHeight; return ''; })()}
+                          <rect x="${x}" y="${currentY - revisionHeight}" width="50" height="${revisionHeight}" fill="#fd7e14" opacity="0.8" rx="2"/>
+                          ${(() => { currentY -= revisionHeight; return ''; })()}
+                          <rect x="${x}" y="${currentY - approvedHeight}" width="50" height="${approvedHeight}" fill="#28a745" opacity="0.8" rx="2"/>
+                          <text x="${x + 25}" y="295" font-size="11" fill="${textColor}" opacity="0.7" text-anchor="middle">${key}</text>
+                        `;
+                      }).join('')}
+                      <line x1="40" y1="280" x2="480" y2="280" stroke="${textColor}" opacity="0.3" stroke-width="2"/>
+                      <line x1="40" y1="40" x2="40" y2="280" stroke="${textColor}" opacity="0.3" stroke-width="2"/>
+                    </svg>
+                  `}
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; justify-content: center;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 16px; height: 16px; background-color: #28a745; border-radius: 3px; opacity: 0.8;"></div>
+                    <span style="font-size: ${baseSize * 0.75}px; color: ${textColor};">ตรวจแล้ว</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 16px; height: 16px; background-color: #ffc107; border-radius: 3px; opacity: 0.8;"></div>
+                    <span style="font-size: ${baseSize * 0.75}px; color: ${textColor};">รอตรวจ</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 16px; height: 16px; background-color: #fd7e14; border-radius: 3px; opacity: 0.8;"></div>
+                    <span style="font-size: ${baseSize * 0.75}px; color: ${textColor};">ส่งกลับ</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 16px; height: 16px; background-color: #dc3545; border-radius: 3px; opacity: 0.8;"></div>
+                    <span style="font-size: ${baseSize * 0.75}px; color: ${textColor};">ยังไม่ส่ง</span>
+                  </div>
+                </div>
+              </div>
+              <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                  <i class='bx bx-pie-chart-alt-2' style="font-size: ${baseSize * 2}px; color: #ff9800;"></i>
+                  <h3 style="font-size: ${baseSize * 1.5}px;
+                            font-weight: 700;
+                            color: ${textColor};
+                            margin: 0;">
+                    สัดส่วนสถานะ
+                  </h3>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center; height: 300px; position: relative;">
+                  ${stats.total === 0 ? `
+                    <div style="color: ${textColor}; opacity: 0.5; text-align: center;">
+                      ไม่มีข้อมูล
+                    </div>
+                  ` : `
+                    <div style="position: relative; width: 250px; height: 250px;">
+                      <canvas id="donutChart" width="250" height="250"></canvas>
+                      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+                        <div style="font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor};">${stats.total}</div>
+                        <div style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7;">รายวิชา</div>
+                      </div>
+                    </div>
+                  `}
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 20px; height: 20px; background-color: #28a745; border-radius: 4px; opacity: 0.9;"></div>
+                    <div>
+                      <div style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7;">ตรวจแล้ว</div>
+                      <div style="font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">${stats.approved} (${approvedPercent.toFixed(1)}%)</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 20px; height: 20px; background-color: #ffc107; border-radius: 4px; opacity: 0.9;"></div>
+                    <div>
+                      <div style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7;">รอตรวจ</div>
+                      <div style="font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">${stats.pending} (${pendingPercent.toFixed(1)}%)</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 20px; height: 20px; background-color: #fd7e14; border-radius: 4px; opacity: 0.9;"></div>
+                    <div>
+                      <div style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7;">ส่งกลับแก้ไข</div>
+                      <div style="font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">${stats.revision} (${revisionPercent.toFixed(1)}%)</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 20px; height: 20px; background-color: #dc3545; border-radius: 4px; opacity: 0.9;"></div>
+                    <div>
+                      <div style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.7;">ยังไม่ส่ง</div>
+                      <div style="font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">${stats.not_submitted} (${notSubmittedPercent.toFixed(1)}%)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h3 style="font-size: ${baseSize * 1.5}px; font-weight: 700; color: ${textColor}; margin-bottom: 1.5rem;">
+                สรุปข้อมูลเพิ่มเติม
+              </h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem;">
+                <div>
+                  <div style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">อัตราการส่งเอกสาร</div>
+                  <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: ${primaryColor};">
+                    ${stats.total > 0 ? ((stats.total - stats.not_submitted) / stats.total * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">อัตราการอนุมัติ</div>
+                  <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: #28a745;">
+                    ${stats.total > 0 ? (stats.approved / stats.total * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">รอดำเนินการ</div>
+                  <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: #ffc107;">
+                    ${stats.pending + stats.revision}
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">ประสิทธิภาพ</div>
+                  <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: ${primaryColor};">
+                    ${stats.total > 0 ? (stats.approved / (stats.total - stats.not_submitted) * 100 || 0).toFixed(1) : 0}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <footer style="background-color: ${surfaceColor}; margin-top: 4rem; padding: 2rem; border-top: 1px solid ${bgColor};">
+            <div style="max-width: 1400px; margin: 0 auto; text-align: center;">
+              <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">
+                พัฒนาโดย <strong style="color: ${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @canva AI
+              </p>
+              <p style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.5;">
+                © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+              </p>
+            </div>
+          </footer>
+        </div>
+      `;
+    }
+    
+function renderDashboard(config, baseSize) {
+  const bgColor = config.background_color;
+  const surfaceColor = config.surface_color;
+  const textColor = config.text_color;
+  const primaryColor = config.primary_action_color;
+  const secondaryColor = config.secondary_action_color;
+
+  // กรองข้อมูลตามสถานะและการค้นหา
+  const filteredData = syllabusData.filter(item => {
+    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+    const matchesSearch = !searchQuery ||
+      item.course_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // ถ้าเป็น admin ให้แสดงข้อมูลทั้งหมด
+    if (currentUser && currentUser.role === 'admin') {
+      return matchesStatus && matchesSearch;
+    }
+    // ถ้าเป็น user ให้แสดงเฉพาะข้อมูลของกลุ่มของตัวเอง
+    return matchesStatus && matchesSearch && item.group === currentUser.group;
+  });
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // คำนวณสถิติจากข้อมูลที่กรองแล้ว
+  const stats = {
+    total: filteredData.length,
+    pending: filteredData.filter(s => s.status === 'pending').length,
+    approved: filteredData.filter(s => s.status === 'approved').length,
+    revision: filteredData.filter(s => s.status === 'revision').length,
+    not_submitted: filteredData.filter(s => s.status === 'not_submitted').length,
+  };
+
+  return `
+    <div class="w-full min-h-full" style="background-color: ${bgColor};">
+      <!-- Navbar -->
+      <nav style="background: linear-gradient(135deg, #6b8e23, #556b2f); box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;">
+        <div style="max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i class='bx bx-book-open' style="font-size: ${baseSize * 1.5}px; color: white;"></i>
+            <h1 style="font-size: ${baseSize * 1.25}px; font-weight: 700; color: white; margin: 0;">
+              ${config.site_title}
+            </h1>
+          </div>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <button onclick="handleNavigation('home')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+              หน้าหลัก
+            </button>
+            <button onclick="handleNavigation('submit')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+              ส่งเอกสาร
+            </button>
+            <button onclick="handleNavigation('stats')" style="padding: 0.5rem 1rem; background-color: transparent; color: white; border: none; font-size: ${baseSize * 0.875}px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+              สถิติ
+            </button>
+            ${currentUser ? `
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <span style="font-size: ${baseSize * 0.875}px; color: white; font-weight: 500;">
+                  ${currentUser.fullname} (${currentUser.role === 'admin' ? 'ผู้ดูแลระบบ' : 'กลุ่ม ' + currentUser.group})
+                </span>
+                <button onclick="handleLogout()" style="padding: 0.5rem 1rem; background-color: rgba(255,255,255,0.2); color: white; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;">
+                  ออกจากระบบ
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </nav>
+
+      <!-- Contenu principal -->
+      <div class="fade-in" style="max-width: 1400px; margin: 0 auto; padding: 2rem;">
+        <div style="margin-bottom: 2rem; padding-top: 1rem;">
+          <h2 style="font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor};">
+            สถานะประมวลการสอน
+          </h2>
+          <p style="font-size: ${baseSize}px; color: ${textColor}; opacity: 0.7; margin-top: 0.5rem;">
+            จัดการและติดตามสถานะประมวลการสอน${currentUser && currentUser.role !== 'admin' ? ' ของกลุ่ม ' + currentUser.group : ''}
+          </p>
+        </div>
+
+        <!-- สถิติ -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+          <div style="background-color: ${surfaceColor}; padding: 1rem 1.25rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">ทั้งหมด</div>
+            <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: ${primaryColor}; margin-bottom: 0.5rem;">${stats.total}</div>
+            <div style="width: 100%; height: 4px; background-color: ${bgColor}; border-radius: 2px; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background-color: ${primaryColor};"></div>
+            </div>
+          </div>
+          <div style="background-color: ${surfaceColor}; padding: 1rem 1.25rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">รอตรวจ</div>
+            <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: #d63031; margin-bottom: 0.5rem;">${stats.pending}</div>
+            <div style="width: 100%; height: 4px; background-color: ${bgColor}; border-radius: 2px; overflow: hidden;">
+              <div style="width: ${stats.total > 0 ? (stats.pending / stats.total * 100) : 0}%; height: 100%; background-color: #d63031;"></div>
+            </div>
+          </div>
+          <div style="background-color: ${surfaceColor}; padding: 1rem 1.25rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">ตรวจแล้ว</div>
+            <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: #155724; margin-bottom: 0.5rem;">${stats.approved}</div>
+            <div style="width: 100%; height: 4px; background-color: ${bgColor}; border-radius: 2px; overflow: hidden;">
+              <div style="width: ${stats.total > 0 ? (stats.approved / stats.total * 100) : 0}%; height: 100%; background-color: #28a745;"></div>
+            </div>
+          </div>
+          <div style="background-color: ${surfaceColor}; padding: 1rem 1.25rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">ส่งกลับแก้ไข</div>
+            <div style="font-size: ${baseSize * 1.75}px; font-weight: 700; color: #856404; margin-bottom: 0.5rem;">${stats.revision}</div>
+            <div style="width: 100%; height: 4px; background-color: ${bgColor}; border-radius: 2px; overflow: hidden;">
+              <div style="width: ${stats.total > 0 ? (stats.revision / stats.total * 100) : 0}%; height: 100%; background-color: #ffc107;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- แถบค้นหาและตัวกรอง -->
+        <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+          <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+            <input type="text" id="searchInput" placeholder="ค้นหารหัสวิชา ชื่อวิชา หรืออาจารย์..." value="${searchQuery}" style="flex: 1; min-width: 250px; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+            <button onclick="clearSearch()" style="padding: 0.75rem 1.5rem; background-color: ${secondaryColor}; color: white; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              ล้างการค้นหา
+            </button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <button class="tab-button" onclick="setFilter('all')" style="padding: 0.5rem 1rem; background-color: ${filterStatus === 'all' ? primaryColor : bgColor}; color: ${filterStatus === 'all' ? 'white' : textColor}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              ทั้งหมด (${filteredData.length})
+            </button>
+            <button class="tab-button" onclick="setFilter('pending')" style="padding: 0.5rem 1rem; background-color: ${filterStatus === 'pending' ? primaryColor : bgColor}; color: ${filterStatus === 'pending' ? 'white' : textColor}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              รอตรวจ (${stats.pending})
+            </button>
+            <button class="tab-button" onclick="setFilter('approved')" style="padding: 0.5rem 1rem; background-color: ${filterStatus === 'approved' ? primaryColor : bgColor}; color: ${filterStatus === 'approved' ? 'white' : textColor}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              ตรวจแล้ว (${stats.approved})
+            </button>
+            <button class="tab-button" onclick="setFilter('revision')" style="padding: 0.5rem 1rem; background-color: ${filterStatus === 'revision' ? primaryColor : bgColor}; color: ${filterStatus === 'revision' ? 'white' : textColor}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              ส่งกลับแก้ไข (${stats.revision})
+            </button>
+            <button class="tab-button" onclick="setFilter('not_submitted')" style="padding: 0.5rem 1rem; background-color: ${filterStatus === 'not_submitted' ? primaryColor : bgColor}; color: ${filterStatus === 'not_submitted' ? 'white' : textColor}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; border: none; cursor: pointer;">
+              ยังไม่ส่ง (${stats.not_submitted})
+            </button>
+          </div>
+        </div>
+
+        <!-- ตารางข้อมูล -->
+        <div style="background-color: ${surfaceColor}; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          ${filteredData.length === 0 ? `
+            <div style="text-align: center; padding: 3rem; color: ${textColor}; opacity: 0.5;">
+              <div style="font-size: ${baseSize * 3}px; margin-bottom: 1rem;">📭</div>
+              <div style="font-size: ${baseSize * 1.2}px;">ไม่พบข้อมูล${currentUser && currentUser.role !== 'admin' ? ' ในกลุ่มของคุณ' : ''}</div>
+              ${currentUser && currentUser.role === 'admin' ? '' : `
+                <p style="font-size: ${baseSize * 0.875}px; margin-top: 1rem; color: ${textColor}; opacity: 0.7;">
+                  คุณสามารถส่งเอกสารใหม่ได้โดยคลิกปุ่ม "ส่งเอกสาร" ข้างบน
+                </p>
+              `}
+            </div>
+          ` : `
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 2px solid ${bgColor};">
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">รหัสวิชา</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">ชื่อวิชา</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">อาจารย์</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">ภาคเรียน/ปี</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">กลุ่ม</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">สถานะ</th>
+                    <th style="padding: 1rem; text-align: left; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor};">การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${paginatedData.map(item => `
+                    <tr style="border-bottom: 1px solid ${bgColor};" data-item-id="${item.id}">
+                      <td style="padding: 1rem; font-size: ${baseSize * 0.875}px; color: ${textColor};">${item.course_code}</td>
+                      <td style="padding: 1rem; font-size: ${baseSize * 0.875}px; color: ${textColor};">${item.course_name}</td>
+                      <td style="padding: 1rem; font-size: ${baseSize * 0.875}px; color: ${textColor};">${item.instructor}</td>
+                      <td style="padding: 1rem; font-size: ${baseSize * 0.875}px; color: ${textColor};">${item.semester}/${item.academic_year}</td>
+                      <td style="padding: 1rem; font-size: ${baseSize * 0.875}px; color: ${textColor};">${item.group}</td>
+                      <td style="padding: 1rem;">
+                        <span class="status-badge" style="background-color: ${STATUS_COLORS[item.status].bg}; color: ${STATUS_COLORS[item.status].text};">
+                          ${STATUS_LABELS[item.status]}
+                        </span>
+                      </td>
+                      <td style="padding: 1rem;">
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                          <!-- ปุ่มดูไฟล์ PDF (ดวงตา) -->
+                          ${item.file_url ? `
+                            <button onclick="window.open('${item.file_url}', '_blank')" 
+                                    style="padding: 0.5rem 1rem; background-color: #6f42c1; color: white; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: pointer;" 
+                                    title="ดูไฟล์ต้นฉบับ">
+                              👁️ ดู PDF
+                            </button>
+                          ` : `
+                            <button disabled 
+                                    style="padding: 0.5rem 1rem; background-color: #e9ecef; color: #6c757d; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: not-allowed;" 
+                                    title="ไม่มีไฟล์แนบ">
+                              ❌ ไม่มี PDF
+                            </button>
+                          `}
+                          <button onclick="editItem('${item.id}')" style="padding: 0.5rem 1rem; background-color: #ffc107; color: #000; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: pointer;" title="แก้ไขข้อมูล">
+                            แก้ไข
+                          </button>
+                          <button onclick="printSubmitForm('${item.id}')" style="padding: 0.5rem 1rem; background-color: #17a2b8; color: white; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: pointer;" title="พิมพ์แบบฟอร์ม">
+                            พิมพ์ PDF
+                          </button>
+                          ${currentUser && currentUser.role === 'admin' ? `
+                            <button onclick="changeStatus('${item.id}')" style="padding: 0.5rem 1rem; background-color: ${primaryColor}; color: white; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: pointer;" title="เปลี่ยนสถานะ">
+                              สถานะ
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" style="padding: 0.5rem 1rem; background-color: #dc3545; color: white; border-radius: 0.375rem; font-size: ${baseSize * 0.75}px; border: none; cursor: pointer;" title="ลบรายการ">
+                              ลบ
+                            </button>
+                          ` : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            ${totalPages > 1 ? `
+              <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid ${bgColor};">
+                <button
+                  onclick="changePage(${currentPage - 1})"
+                  ${currentPage === 1 ? 'disabled' : ''}
+                  style="padding: 0.75rem 1.5rem; background-color: ${currentPage === 1 ? bgColor : secondaryColor}; color: ${currentPage === 1 ? textColor : 'white'}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === 1 ? 0.5 : 1};">
+                  ← ย้อนกลับ
+                </button>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: ${baseSize * 0.875}px; color: ${textColor};">
+                    หน้า ${currentPage} จาก ${totalPages}
+                  </span>
+                </div>
+                <button
+                  onclick="changePage(${currentPage + 1})"
+                  ${currentPage === totalPages ? 'disabled' : ''}
+                  style="padding: 0.75rem 1.5rem; background-color: ${currentPage === totalPages ? bgColor : secondaryColor}; color: ${currentPage === totalPages ? textColor : 'white'}; border-radius: 0.5rem; font-size: ${baseSize * 0.875}px; font-weight: 600; border: none; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === totalPages ? 0.5 : 1};">
+                  ถัดไป →
+                </button>
+              </div>
+            ` : ''}
+          `}
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer style="background-color: ${surfaceColor}; margin-top: 4rem; padding: 2rem; border-top: 1px solid ${bgColor};">
+        <div style="max-width: 1400px; margin: 0 auto; text-align: center;">
+          <p style="font-size: ${baseSize * 0.875}px; color: ${textColor}; opacity: 0.7; margin-bottom: 0.5rem;">
+            พัฒนาโดย <strong style="color: ${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @canva AI
+          </p>
+          <p style="font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.5;">
+            © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+          </p>
+        </div>
+      </footer>
+    </div>
+  `;
+}
+
+
+
+    
+    function drawDonutChart() {
+      const canvas = document.getElementById('donutChart');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      const centerX = 125;
+      const centerY = 125;
+      const radius = 90;
+      const innerRadius = 60;
+      
+      const stats = {
+        total: syllabusData.length,
+        approved: syllabusData.filter(s => s.status === 'approved').length,
+        pending: syllabusData.filter(s => s.status === 'pending').length,
+        revision: syllabusData.filter(s => s.status === 'revision').length,
+        not_submitted: syllabusData.filter(s => s.status === 'not_submitted').length
+      };
+      
+      const statusData = [
+        { value: stats.approved, color: '#28a745', label: 'ตรวจแล้ว' },
+        { value: stats.pending, color: '#ffc107', label: 'รอตรวจ' },
+        { value: stats.revision, color: '#fd7e14', label: 'ส่งกลับ' },
+        { value: stats.not_submitted, color: '#dc3545', label: 'ยังไม่ส่ง' }
+      ];
+      
+      let currentAngle = -Math.PI / 2;
+      
+      statusData.forEach(status => {
+        if (status.value === 0) return;
+        
+        const sliceAngle = (status.value / stats.total) * 2 * Math.PI;
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+        ctx.closePath();
+        
+        ctx.fillStyle = status.color;
+        ctx.fill();
+        
+        currentAngle += sliceAngle;
+      });
+    }
+    
+    function attachEventListeners() {
+      const syllabusForm = document.getElementById('syllabusForm');
+      if (syllabusForm) {
+        syllabusForm.addEventListener('submit', handleSubmit);
+      }
+      
+      const authForm = document.getElementById('authForm');
+      if (authForm) {
+        authForm.addEventListener('submit', handleAuth);
+      }
+      
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          searchQuery = e.target.value;
+          currentPage = 1;
+          renderApp();
+        });
+      }
+      
+      if (currentView === 'stats') {
+        setTimeout(() => drawDonutChart(), 100);
+      }
+    }
+    
+  function handleAuth(e) {
+  e.preventDefault();
+  
+  console.log('handleAuth called, isLogin:', isLogin);
+  
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!username || !password) {
+    Swal.fire({
+      icon: 'error',
+      title: 'ข้อมูลไม่ครบถ้วน',
+      text: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน',
+      confirmButtonText: 'ตกลง'
+    });
+    return;
+  }
+
+  if (isLogin) {
+    // === เข้าสู่ระบบ ===
+    Swal.fire({
+      title: 'กำลังเข้าสู่ระบบ...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        console.log('Login response:', response);
+        
+        if (response && response.success) {
+          currentUser = response.user;
+          Swal.fire({
+            icon: 'success',
+            title: 'เข้าสู่ระบบสำเร็จ!',
+            text: 'ยินดีต้อนรับ ' + response.user.fullname,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          setTimeout(() => handleNavigation('dashboard'), 1500);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'เข้าสู่ระบบไม่ได้',
+            text: response.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+            confirmButtonText: 'ตกลง'
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Login error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้: ' + error.message,
+          confirmButtonText: 'ตกลง'
+        });
+      })
+      .loginUser(username, password);
+
+  } else {
+    // === ลงทะเบียน ===
+    const fullname = document.getElementById('fullname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const userGroup = document.getElementById('userGroup').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    console.log('Registration data:', { username, fullname, email, userGroup });
+
+    // ตรวจสอบข้อมูล
+    if (!fullname || !email || !userGroup) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        text: 'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // ตรวจสอบรหัสผ่าน
+    if (password !== confirmPassword) {
+      Swal.fire({
+        icon: 'error',
+        title: 'รหัสผ่านไม่ตรงกัน',
+        text: 'กรุณาตรวจสอบรหัสผ่านและยืนยันรหัสผ่านให้ตรงกัน',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // ตรวจสอบอีเมล
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'อีเมลไม่ถูกต้อง',
+        text: 'กรุณากรอกอีเมลในรูปแบบที่ถูกต้อง',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // แสดง loading
+    Swal.fire({
+      title: 'กำลังลงทะเบียน...',
+      html: 'กรุณารอสักครู่',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    // สร้างข้อมูลผู้ใช้
+    const userData = {
+      username: username,
+      password: password,
+      fullname: fullname,
+      email: email,
+      group: userGroup
+    };
+
+    console.log('Calling registerUser with:', userData);
+
+    // เรียก Google Apps Script
+    google.script.run
+      .withSuccessHandler(function(response) {
+        console.log('Registration response:', response);
+        
+        if (response && response.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'ลงทะเบียนเข้าใช้งานสำเร็จ!',
+            html: `
+              <p>ยินดีต้อนรับ <strong>${fullname}</strong></p>
+              <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">
+                คุณสามารถเข้าสู่ระบบได้ทันที
+              </p>
+            `,
+            confirmButtonText: 'เข้าสู่ระบบ',
+            confirmButtonColor: '#3b82f6'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // สลับไปหน้า Login
+              isLogin = true;
+              renderApp();
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'ลงทะเบียนไม่สำเร็จ',
+            text: response.message || 'เกิดข้อผิดพลาดในการลงทะเบียนใช้งาน',
+            confirmButtonText: 'ตกลง'
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Registration error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้: ' + (error.message || error.toString()),
+          confirmButtonText: 'ตกลง'
+        });
+      })
+      .registerUser(userData);
+  }
+}
+
+    
+    
+
+
+
+    
+    function toggleAuthMode() {
+      isLogin = !isLogin;
+      renderApp();
+    }
+    
+    function handleLogout() {
+      currentUser = null;
+      handleNavigation('home');
+    }
+    
+async function handleSubmit(e) {
+  e.preventDefault();
+
+  // แสดง confirmation dialog
+  const result = await Swal.fire({
+    title: 'ยืนยันการส่งเอกสาร?',
+    text: "คุณแน่ใจหรือไม่ว่าต้องการส่งเอกสารนี้?",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'ใช่, ส่งเลย!',
+    cancelButtonText: 'ยกเลิก',
+    reverseButtons: true,
+    confirmButtonColor: '#3b82f6',
+    cancelButtonColor: '#64748b'
+  });
+
+  if (!result.isConfirmed) return;
+
+  // แสดง loading
+  Swal.fire({
+    title: 'กำลังส่งเอกสาร...',
+    html: 'กรุณารอสักครู่ ระบบกำลังบันทึกข้อมูลของคุณ',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+
+  const fileInput = document.getElementById('fileUpload');
+  const file = fileInput.files[0];
+  
+  // สร้างวันที่ในรูปแบบ ISO string
+  const now = new Date();
+  const thaiTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+  const timestamp = thaiTime.toISOString().replace('T', ' ').substring(0, 19);
+  
+  const formDataBase = {
+    id: Date.now().toString(),
+    course_code: document.getElementById('courseCode').value.trim(),
+    course_name: document.getElementById('courseName').value.trim(),
+    instructor: document.getElementById('instructor').value.trim(),
+    semester: document.getElementById('semester').value,
+    academic_year: document.getElementById('academicYear').value.trim(),
+    group: document.getElementById('group').value,
+    status: 'pending',
+    submitted_date: timestamp,
+    reviewer_notes: '',
+    version: 1,
+    file_id: '',
+    file_url: ''
+  };
+
+  // ตรวจสอบข้อมูลที่จำเป็น
+  if (!formDataBase.course_code || !formDataBase.course_name || !formDataBase.instructor || 
+      !formDataBase.semester || !formDataBase.academic_year || !formDataBase.group) {
+    Swal.fire({
+      icon: 'error',
+      title: 'ข้อมูลไม่ครบถ้วน',
+      text: 'กรุณากรอกข้อมูลให้ครบทุกช่องที่มีเครื่องหมาย *',
+      confirmButtonText: 'ตกลง'
+    });
+    return;
+  }
+
+  try {
+    if (file) {
+      // กรณีมีไฟล์แนบ
+      console.log('Processing file upload...');
+      
+      const reader = new FileReader();
+      
+      reader.onload = async function(e) {
+        try {
+          const fileData = e.target.result.split(',')[1];
+          const fileName = file.name;
+          const mimeType = file.type;
+
+          console.log('Uploading file:', fileName);
+
+          // อัปโหลดไฟล์
+          google.script.run
+            .withSuccessHandler(function(fileResponse) {
+              console.log('File upload response:', fileResponse);
+              
+              if (!fileResponse.success) {
+                throw new Error(fileResponse.message || 'อัปโหลดไฟล์ล้มเหลว');
+              }
+
+              // บันทึกข้อมูลพร้อมไฟล์
+              const formData = { 
+                ...formDataBase, 
+                file_id: fileResponse.fileId, 
+                file_url: fileResponse.fileUrl 
+              };
+
+              console.log('Saving data with file:', formData);
+
+              google.script.run
+                .withSuccessHandler(function(response) {
+                  console.log('Save response:', response);
+                  handleSubmitSuccess(response, formData);
+                })
+                .withFailureHandler(function(error) {
+                  console.error('Save error:', error);
+                  handleSubmitError(error);
+                })
+                .createSyllabus(formData);
+            })
+            .withFailureHandler(function(error) {
+              console.error('File upload error:', error);
+              handleSubmitError('ไม่สามารถอัปโหลดไฟล์ได้: ' + error.message);
+            })
+            .uploadFile(fileData, fileName, mimeType);
+
+        } catch (err) {
+          console.error('Reader error:', err);
+          handleSubmitError(err.message);
+        }
+      };
+
+      reader.onerror = function(error) {
+        console.error('FileReader error:', error);
+        handleSubmitError('ไม่สามารถอ่านไฟล์ได้');
+      };
+
+      reader.readAsDataURL(file);
+
+    } else {
+      // กรณีไม่มีไฟล์แนบ
+      console.log('Saving data without file:', formDataBase);
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          console.log('Save response:', response);
+          handleSubmitSuccess(response, formDataBase);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Save error:', error);
+          handleSubmitError(error);
+        })
+        .createSyllabus(formDataBase);
+    }
+
+  } catch (err) {
+    console.error('Submit error:', err);
+    handleSubmitError(err.message);
+  }
+}
+    
+
+// ฟังก์ชันสำหรับจัดการเมื่อเกิดข้อผิดพลาด
+function handleSubmitError(error) {
+  console.error('handleSubmitError:', error);
+  
+  const errorMessage = typeof error === 'string' ? error : (error.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
+  
+  Swal.fire({
+    icon: 'error',
+    title: 'เกิดข้อผิดพลาด',
+    text: errorMessage,
+    confirmButtonText: 'ตกลง',
+    confirmButtonColor: '#dc3545'
+  });
+}
+
+//=================== ปรับปรุงฟังก์ชัน printSubmitForm ============================
+function printSubmitForm(itemId) {
+      const item = syllabusData.find(s => s.id.toString() === itemId.toString());
+      
+      if (!item) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ไม่พบข้อมูล',
+          text: 'ไม่พบรายการที่ต้องการพิมพ์ PDF'
+        });
+        return;
+      }
+
+      Swal.fire({
+        title: 'กำลังสร้าง PDF...',
+        html: 'กรุณารอสักครู่',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const statusThai = STATUS_LABELS[item.status] || item.status;
+        const statusColor = STATUS_COLORS[item.status] || { bg: '#f0f0f0', text: '#333' };
+
+        // ใช้ฟอนต์ Roboto ที่มีอยู่แล้วใน pdfMake (รองรับภาษาไทยพอใช้)
+        const docDefinition = {
+          pageSize: 'A4',
+          pageMargins: [40, 80, 40, 60],
+          
+          header: function(currentPage, pageCount) {
+            return {
+              columns: [
+                { text: 'Syllabus Document', fontSize: 14, bold: true, margin: [40, 25, 0, 0] },
+                { text: `Page ${currentPage}/${pageCount}`, alignment: 'right', fontSize: 12, margin: [0, 25, 40, 0] }
+              ]
+            };
+          },
+
+          content: [
+            {
+              text: 'แบบฟอร์มนำส่งประมวลการสอน',
+              fontSize: 24,
+              bold: true,
+              alignment: 'center',
+              margin: [0, 0, 0, 25]
+            },
+            
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3b82f6' }], margin: [0, 0, 0, 25] },
+
+            { text: 'Course Information', fontSize: 18, bold: true, margin: [0, 0, 0, 15], color: '#3b82f6' },
+            {
+              table: {
+                widths: [150, '*'],
+                body: [
+                  [{ text: 'รหัสวิชา:', bold: true }, item.course_code || '-'],
+                  [{ text: 'รายวิชา:', bold: true }, item.course_name || '-'],
+                  [{ text: 'Instructor:', bold: true }, item.instructor || '-'],
+                  [{ text: 'Semester:', bold: true }, `Semester ${item.semester || '-'}`],
+                  [{ text: 'Academic Year:', bold: true }, item.academic_year || '-'],
+                  [{ text: 'Group:', bold: true }, item.group || '-']
+                ]
+              },
+              layout: {
+                hLineWidth: function(i, node) { return (i === 0 || i === node.table.body.length) ? 0 : 1; },
+                vLineWidth: function() { return 0; },
+                hLineColor: function() { return '#e0e0e0'; },
+                paddingLeft: function() { return 10; },
+                paddingRight: function() { return 10; },
+                paddingTop: function() { return 8; },
+                paddingBottom: function() { return 8; }
+              },
+              margin: [0, 0, 0, 25]
+            },
+
+            { text: 'Status & Submission Date', fontSize: 18, bold: true, margin: [0, 15, 0, 15], color: '#3b82f6' },
+            {
+              columns: [
+                {
+                  width: '50%',
+                  stack: [
+                    { text: 'Review Status:', bold: true, margin: [0, 0, 0, 8] },
+                    { text: statusThai, fontSize: 16, bold: true, color: statusColor.text }
+                  ]
+                },
+                {
+                  width: '50%',
+                  stack: [
+                    { text: 'Submitted Date:', bold: true, alignment: 'right', margin: [0, 0, 0, 8] },
+                    { text: item.submitted_date || '-', alignment: 'right' }
+                  ]
+                }
+              ],
+              margin: [0, 0, 0, 25]
+            },
+
+            { text: 'Reviewer Notes', fontSize: 16, bold: true, margin: [0, 15, 0, 12], color: '#3b82f6' },
+            {
+              text: item.reviewer_notes || 'No notes available',
+              margin: [10, 0, 0, 25],
+              italics: !item.reviewer_notes,
+              color: item.reviewer_notes ? '#000' : '#999'
+            }
+          ],
+
+          footer: function(currentPage, pageCount) {
+            return {
+              text: `Developed by Pormodtanoy @canva AI | © ${new Date().getFullYear()} All Rights Reserved`,
+              fontSize: 10,
+              alignment: 'center',
+              margin: [0, 15, 0, 0],
+              color: '#666'
+            };
+          },
+
+          defaultStyle: {
+            font: 'Roboto',
+            fontSize: 12
+          }
+        };
+
+        setTimeout(() => {
+          pdfMake.createPdf(docDefinition).open();
+          Swal.close();
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'สร้าง PDF สำเร็จ!',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }, 500);
+
+      } catch (error) {
+        Swal.close();
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: error.message
+        });
+      }
+    }
+
+
+//=========================== ฟังก์ชันสำหรับจัดการเมื่อส่งสำเร็จ ==============================
+function handleSubmitSuccess(response, formData) {
+  console.log('handleSubmitSuccess called:', response);
+  
+  if (response && response.success) {
+    lastSubmittedId = response.data.id;
+    
+    // ล้างฟอร์ม
+    document.getElementById('syllabusForm').reset();
+    
+    // ✅ Reload ข้อมูลจาก Google Sheets
+    reloadData().then(() => {
+      console.log('Data reloaded after submit');
+      
+      // แสดงข้อความสำเร็จ
+      Swal.fire({
+        icon: 'success',
+        title: 'ส่งเอกสารสำเร็จ!',
+        html: `
+          <p style="margin-bottom: 1rem;">รหัสวิชา <strong>${formData.course_code}</strong></p>
+          <p style="margin-bottom: 1rem;">${formData.course_name}</p>
+          <p style="font-size: 0.9rem; color: #666;">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</p>
+        `,
+        showDenyButton: true,
+        confirmButtonText: '🖨️ พิมพ์แบบฟอร์ม PDF',
+        denyButtonText: 'ดูรายการทั้งหมด',
+        confirmButtonColor: '#3b82f6',
+        denyButtonColor: '#64748b',
+        allowOutsideClick: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          printSubmitForm(lastSubmittedId);
+        } else if (result.isDenied) {
+          if (currentUser) {
+            handleNavigation('dashboard');
+          } else {
+            handleNavigation('home');
+          }
+        }
+      });
+    }).catch(error => {
+      console.error('Failed to reload data:', error);
+    });
+
+  } else {
+    throw new Error(response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+  }
+}
+
+    function showSubmitSuccess(data) {
+      const config = getConfig();
+      const primaryColor = config.primary_action_color;
+      const textColor = config.text_color;
+      const baseSize = config.font_size;
+      
+      const messageDiv = document.getElementById('submitMessage');
+      if (messageDiv) {
+        messageDiv.style.display = 'block';
+        messageDiv.style.padding = '2rem';
+        messageDiv.style.borderRadius = '1rem';
+        messageDiv.style.background = 'linear-gradient(135deg, #d4edda, #c3e6cb)';
+        messageDiv.style.border = '2px solid #28a745';
+        messageDiv.style.textAlign = 'center';
+        
+        messageDiv.innerHTML = `
+          <div style="font-size: ${baseSize * 3}px; margin-bottom: 1rem;">✅</div>
+          <h3 style="font-size: ${baseSize * 1.5}px; font-weight: 700; color: #155724; margin-bottom: 1rem;">
+            ส่งเอกสารสำเร็จ!
+          </h3>
+          <p style="font-size: ${baseSize}px; color: #155724; margin-bottom: 1.5rem;">
+            รหัสวิชา ${data.course_code} - ${data.course_name}
+          </p>
+          <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <button onclick="printSubmitForm('${data.id}')" class="pulse-animation" style="padding: 1rem 2rem; background: linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd); color: white; border-radius: 0.75rem; font-size: ${baseSize}px; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+              🖨️ พิมพ์แบบฟอร์ม PDF
+            </button>
+            <button onclick="handleNavigation('dashboard')" style="padding: 1rem 2rem; background-color: #6c757d; color: white; border-radius: 0.75rem; font-size: ${baseSize}px; font-weight: 600; border: none; cursor: pointer;">
+              ดูรายการทั้งหมด
+            </button>
+          </div>
+        `;
+      }
+    }
+    
+     function showMessage(message, type) {
+      console.log(`[showMessage] ${type}: ${message}`);
+      
+      // ใช้ SweetAlert2 แทนการแสดง message ด้วย HTML
+      const icon = type === 'success' ? 'success' : 'error';
+      const title = type === 'success' ? 'สำเร็จ!' : 'เกิดข้อผิดพลาด';
+      
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: message,
+        confirmButtonText: 'ตกลง',
+        timer: type === 'success' ? 3000 : undefined,
+        timerProgressBar: type === 'success'
+      });
+    }
+    
+
+    
+function changeStatus(id) {
+  console.log('changeStatus called with ID:', id, 'Type:', typeof id);
+  
+  const item = syllabusData.find(s => s.id.toString() === id.toString());
+  
+  if (!item) {
+    console.error('Item not found. Available IDs:', syllabusData.map(s => s.id));
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่พบข้อมูล',
+      text: 'ไม่พบรายการที่ต้องการเปลี่ยนสถานะ',
+      confirmButtonText: 'ตกลง'
+    });
+    return;
+  }
+  
+  console.log('Found item:', item);
+  
+  // บันทึกสถานะเดิม
+  const originalStatus = item.status;
+  
+  // แสดง dialog เลือกสถานะ
+  Swal.fire({
+    title: 'เปลี่ยนสถานะ',
+    html: `
+      <div style="margin-bottom: 1rem;">
+        <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">
+          รหัสวิชา: <strong>${item.course_code}</strong> - ${item.course_name}
+        </p>
+        <p style="font-size: 0.85rem; color: #999;">
+          อาจารย์: <strong>${item.instructor}</strong>
+        </p>
+        <p style="font-size: 0.85rem; color: #999;">
+          สถานะปัจจุบัน: <strong>${STATUS_LABELS[item.status] || item.status}</strong>
+        </p>
+      </div>
+      <select id="statusSelect" class="swal2-input" style="width: 90%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 0.5rem;">
+        <option value="pending" ${item.status === 'pending' ? 'selected' : ''}>รอตรวจ</option>
+        <option value="approved" ${item.status === 'approved' ? 'selected' : ''}>ตรวจแล้ว</option>
+        <option value="revision" ${item.status === 'revision' ? 'selected' : ''}>ส่งกลับแก้ไข</option>
+        <option value="not_submitted" ${item.status === 'not_submitted' ? 'selected' : ''}>ยังไม่ส่ง</option>
+      </select>
+      <textarea id="statusNotes" class="swal2-input" placeholder="หมายเหตุ (ถ้ามี)" style="width: 90%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 0.5rem; margin-top: 1rem; min-height: 80px;">${item.reviewer_notes || ''}</textarea>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    preConfirm: () => {
+      const selectedStatus = document.getElementById('statusSelect').value;
+      const notes = document.getElementById('statusNotes').value.trim();
+      
+      if (selectedStatus === originalStatus && notes === (item.reviewer_notes || '')) {
+        Swal.showValidationMessage('กรุณาเลือกสถานะใหม่หรือเปลี่ยนหมายเหตุ');
+        return false;
+      }
+      
+      return { status: selectedStatus, notes: notes };
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      const newStatus = result.value.status;
+      const notes = result.value.notes;
+      
+      console.log('Changing status from', originalStatus, 'to:', newStatus);
+      console.log('Notes:', notes);
+      console.log('Instructor:', item.instructor);
+      
+      // แสดง loading
+      Swal.fire({
+        title: 'กำลังอัปเดต...',
+        html: 'กำลังเปลี่ยนสถานะและส่งอีเมลแจ้งเตือน...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      // ส่งข้อมูลครบทุกอย่าง รวมถึง instructor
+      const updatedItem = { 
+        id: item.id,
+        course_code: item.course_code,
+        course_name: item.course_name,
+        instructor: item.instructor, // ✅ เพิ่มส่ง instructor
+        semester: item.semester,
+        academic_year: item.academic_year,
+        group: item.group,
+        status: newStatus,
+        originalStatus: originalStatus,
+        submitted_date: item.submitted_date,
+        reviewer_notes: notes,
+        version: item.version,
+        file_id: item.file_id,
+        file_url: item.file_url
+      };
+      
+      console.log('Updating with complete data:', updatedItem);
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          console.log('Status update response:', response);
+          
+          if (response.success) {
+            // Reload ข้อมูลหลังอัปเดตสำเร็จ
+            reloadData().then(() => {
+              Swal.fire({
+                icon: 'success',
+                title: 'อัปเดตสำเร็จ!',
+                html: `
+                  <p>เปลี่ยนสถานะเรียบร้อยแล้ว</p>
+                  <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">
+                    ${originalStatus !== newStatus ? '✅ ระบบได้ส่งอีเมลแจ้งเตือนไปยัง <strong>' + item.instructor + '</strong> แล้ว' : ''}
+                  </p>
+                `,
+                timer: 3000,
+                showConfirmButton: false
+              });
+              
+              renderApp();
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ไม่สามารถอัปเดตได้',
+              text: response.message,
+              confirmButtonText: 'ตกลง'
+            });
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Status update error:', error);
+          
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: error.message,
+            confirmButtonText: 'ตกลง'
+          });
+        })
+        .updateSyllabus(updatedItem);
+    }
+  });
+}
+
+
+ function deleteItem(id) {
+  const item = syllabusData.find(s => s.id === id);
+  if (!item) return;
+  
+  // แสดง confirmation dialog
+  Swal.fire({
+    title: 'ยืนยันการลบ?',
+    text: `คุณต้องการลบรายวิชา "${item.course_code}" หรือไม่?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ใช่, ลบเลย!',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // แสดง loading
+      Swal.fire({
+        title: 'กำลังลบข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response.success) {
+            // ✅ Reload ข้อมูลหลังลบสำเร็จ
+            reloadData().then(() => {
+              Swal.fire({
+                icon: 'success',
+                title: 'ลบสำเร็จ!',
+                text: 'ข้อมูลถูกลบเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false
+              });
+              
+              // Render หน้าใหม่
+              renderApp();
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ไม่สามารถลบได้',
+              text: response.message || 'เกิดข้อผิดพลาดในการลบข้อมูล',
+              confirmButtonText: 'ตกลง'
+            });
+          }
+        })
+        .withFailureHandler(function(error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: error.message || 'ไม่สามารถลบข้อมูลได้',
+            confirmButtonText: 'ตกลง'
+          });
+        })
+        .deleteSyllabus(id);
+    }
+  });
+}
+    
+    function handleNavigation(view) {
+      currentView = view;
+      currentPage = 1;
+      renderApp();
+    }
+    
+    function setFilter(status) {
+      filterStatus = status;
+      currentPage = 1;
+      renderApp();
+    }
+    
+    function clearSearch() {
+      searchQuery = '';
+      currentPage = 1;
+      renderApp();
+    }
+    
+    function changePage(page) {
+      const filteredData = syllabusData.filter(item => {
+        const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+        const matchesSearch = !searchQuery ||
+          item.course_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesStatus && matchesSearch;
+      });
+      
+      const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+      
+      if (page < 1 || page > totalPages) return;
+      
+      currentPage = page;
+      renderApp();
+    }
+    
+function editItem(id) {
+  const item = syllabusData.find(s => s.id.toString() === id.toString());
+  if (!item) {
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่พบข้อมูล',
+      text: 'ไม่พบรายการที่ต้องการแก้ไข',
+      confirmButtonText: 'ตกลง'
+    });
+    return;
+  }
+  
+  // เก็บค่าสถานะเดิมไว้
+  const originalStatus = item.status;
+  const originalInstructor = item.instructor;
+  
+  const config = getConfig();
+  const bgColor = config.background_color;
+  const surfaceColor = config.surface_color;
+  const textColor = config.text_color;
+  const primaryColor = config.primary_action_color;
+  const secondaryColor = config.secondary_action_color;
+  const baseSize = config.font_size;
+  
+  // สร้าง Modal ด้วย SweetAlert2
+  Swal.fire({
+    title: 'แก้ไขข้อมูลประมวลการสอน',
+    html: `
+      <form id="editForm" style="text-align: left;">
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+              รหัสวิชา <span style="color: red;">*</span>
+            </label>
+            <input type="text" id="editCourseCode" value="${item.course_code || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+          </div>
+          <div>
+            <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+              ชื่อวิชา <span style="color: red;">*</span>
+            </label>
+            <input type="text" id="editCourseName" value="${item.course_name || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+          </div>
+          <div>
+            <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+              อาจารย์ผู้สอน <span style="color: red;">*</span>
+            </label>
+            <input type="text" id="editInstructor" value="${item.instructor || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                ภาคเรียน <span style="color: red;">*</span>
+              </label>
+              <select id="editSemester" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+                <option value="1" ${item.semester == '1' ? 'selected' : ''}>1</option>
+                <option value="2" ${item.semester == '2' ? 'selected' : ''}>2</option>
+                <option value="3" ${item.semester == '3' ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+                ปีการศึกษา <span style="color: red;">*</span>
+              </label>
+              <input type="text" id="editAcademicYear" value="${item.academic_year || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+              กลุ่มเรียน <span style="color: red;">*</span>
+            </label>
+            <select id="editGroup" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
+              <option value="">เลือกกลุ่มการเรียน</option>
+              <option value="สาขาสุขภาพดิจิทัล" ${item.group === 'สาขาสุขภาพดิจิทัล' ? 'selected' : ''}>สาขาสุขภาพดิจิทัล</option>
+              <option value="สาขาชีวการแพทย์" ${item.group === 'สาขาชีวการแพทย์' ? 'selected' : ''}>สาขาชีวการแพทย์</option>
+              <option value="สาขาเทคโนโลยีสุขภาพ" ${item.group === 'สาขาเทคโนโลยีสุขภาพ' ? 'selected' : ''}>สาขาเทคโนโลยีสุขภาพ</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
+              หมายเหตุ
+            </label>
+            <textarea id="editNotes" rows="3" style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor}; resize: vertical;">${item.reviewer_notes || ''}</textarea>
+          </div>
+        </div>
+      </form>
+    `,
+    width: 600,
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: primaryColor,
+    cancelButtonColor: secondaryColor,
+    preConfirm: () => {
+      const form = document.getElementById('editForm');
+      
+      // ตรวจสอบความถูกต้องของฟอร์ม
+      if (!form.checkValidity()) {
+        Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
+        return false;
+      }
+      
+      return {
+      id: item.id,
+      course_code: document.getElementById('editCourseCode').value.trim(),
+      course_name: document.getElementById('editCourseName').value.trim(),
+      instructor: document.getElementById('editInstructor').value.trim(),
+      semester: document.getElementById('editSemester').value,
+      academic_year: document.getElementById('editAcademicYear').value.trim(),
+      group: document.getElementById('editGroup').value,
+      status: item.status, // ยังใช้ status เดิมจาก item
+      originalStatus: originalStatus, // เพิ่มค่า originalStatus
+      originalInstructor: originalInstructor, // เพิ่มค่า originalInstructor
+      reviewer_notes: document.getElementById('editNotes').value.trim(),
+      version: item.version,
+      file_id: item.file_id,
+      file_url: item.file_url
+    };
+  }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // แสดง loading
+      Swal.fire({
+        title: 'กำลังบันทึก...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      // สร้างข้อมูลที่จะอัปเดต
+      const updatedItem = {
+        id: item.id,
+        course_code: result.value.course_code,
+        course_name: result.value.course_name,
+        instructor: result.value.instructor,
+        semester: result.value.semester,
+        academic_year: result.value.academic_year,
+        group: result.value.group,
+        status: item.status,
+        submitted_date: item.submitted_date,
+        reviewer_notes: result.value.reviewer_notes,
+        version: item.version,
+        file_id: item.file_id,
+        file_url: item.file_url
+      };
+      
+      console.log('Updating item:', updatedItem);
+      
+      // เรียก Apps Script
+      google.script.run
+        .withSuccessHandler(function(response) {
+          console.log('Update response:', response);
+          
+          if (response.success) {
+            // ✅ Reload ข้อมูลหลังอัปเดตสำเร็จ
+            reloadData().then(() => {
+              Swal.fire({
+                icon: 'success',
+                title: 'บันทึกสำเร็จ!',
+                text: 'แก้ไขข้อมูลเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false
+              });
+              
+              // Render หน้าใหม่
+              renderApp();
+            }).catch(error => {
+              console.error('Failed to reload after update:', error);
+              Swal.fire({
+                icon: 'warning',
+                title: 'บันทึกสำเร็จ',
+                text: 'แต่ไม่สามารถโหลดข้อมูลใหม่ได้ กรุณารีเฟรชหน้าเว็บ',
+                confirmButtonText: 'รีเฟรช'
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  location.reload();
+                }
+              });
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'ไม่สามารถบันทึกได้',
+              text: response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
+              confirmButtonText: 'ตกลง'
+            });
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Update error:', error);
+          
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์: ' + (error.message || error.toString()),
+            confirmButtonText: 'ตกลง'
+          });
+        })
+        .updateSyllabus(updatedItem);
+    }
+  });
+}
+
+
+  // เพิ่มปุ่ม debug ที่มุมล่างขวา
+  window.addEventListener('load', function() {
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = 'DEBUG';
+    debugBtn.style.position = 'fixed';
+    debugBtn.style.bottom = '20px';
+    debugBtn.style.right = '20px';
+    debugBtn.style.zIndex = '10000';
+    debugBtn.style.padding = '10px';
+    debugBtn.style.backgroundColor = '#3b82f6';
+    debugBtn.style.color = 'white';
+    debugBtn.style.border = 'none';
+    debugBtn.style.borderRadius = '5px';
+    debugBtn.style.cursor = 'pointer';
+    debugBtn.onclick = debugData;
+    document.body.appendChild(debugBtn);
+  });
+
+  // เพิ่มการลองเรียกข้อมูลใหม่หากไม่สำเร็จ
+  function tryGetData() {
+    // ลบการตรวจสอบ currentUser ในตอนเริ่มต้น
+    console.log('Attempting to get data from server...');
+    isLoading = true;
+    
+    google.script.run
+      .withSuccessHandler(function(data) {
+        console.log('Server responded with:', data);
+        if (Array.isArray(data)) {
+          syllabusData = data;
+          currentRecordCount = data.length;
+          console.log('Data loaded with', data.length, 'items');
+          hasInitialData = true;
+          isLoading = false;
+          renderApp();
+        } else {
+          // พยายามดึงข้อมูลทั้งหมดแบบไม่มีพารามิเตอร์
+          console.log('Trying without parameters...');
+          google.script.run
+            .withSuccessHandler(function(dataWithNoParams) {
+              if (Array.isArray(dataWithNoParams)) {
+                syllabusData = dataWithNoParams;
+                currentRecordCount = dataWithNoParams.length;
+                hasInitialData = true;
+                isLoading = false;
+                renderApp();
+              } else {
+                console.error('Still cannot get data');
+                handleDataFailure({ message: 'ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้' });
+              }
+            })
+            .withFailureHandler(handleDataFailure)
+            .getAllSyllabus();
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Initial load failed:', error);
+        // พยายามอีกครั้งโดยไม่ใช้พารามิเตอร์
+        console.log('Trying getAllSyllabus without parameters...');
+        google.script.run
+          .withSuccessHandler(function(data) {
+            if (Array.isArray(data)) {
+              syllabusData = data;
+              currentRecordCount = data.length;
+              hasInitialData = true;
+              isLoading = false;
+              renderApp();
+            } else {
+              handleDataFailure(error);
+            }
+          })
+          .withFailureHandler(handleDataFailure)
+          .getAllSyllabus();
+      })
+      .getAllSyllabus('', ''); // พยายามด้วยพารามิเตอร์ว่างๆ
+  }
+
+  
+  // เรียกใช้ฟังก์ชันนี้แทน initializeApp โดยตรง
+  function initializeApp() {
+    console.log('=== initializeApp: Starting ===');
+    isLoading = true;
+    renderLoadingScreen();
+    
+    // ลบเงื่อนไข currentUser ในตอนนี้
+    // เรียกโดยตรงเสมอ
+    tryGetData();
+  }
+
+    
+    function showNotification(message, type = 'info') {
+      const config = getConfig();
+      const baseSize = config.font_size;
+      
+      const bgColors = {
+        success: '#d4edda',
+        error: '#f8d7da',
+        warning: '#fff3cd',
+        info: '#d1ecf1'
+      };
+      
+      const textColors = {
+        success: '#155724',
+        error: '#721c24',
+        warning: '#856404',
+        info: '#0c5460'
+      };
+      
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background-color: ${bgColors[type]};
+        color: ${textColors[type]};
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 2000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 400px;
+        font-size: ${baseSize * 0.875}px;
+      `;
+      
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+      }, 4000);
+    }
+    
+    window.handleNavigation = handleNavigation;
+    window.setFilter = setFilter;
+    window.clearSearch = clearSearch;
+    window.changeStatus = changeStatus;
+    window.deleteItem = deleteItem;
+    window.editItem = editItem;
+    window.printSubmitForm = printSubmitForm;
+    window.toggleAuthMode = toggleAuthMode;
+    window.handleLogout = handleLogout;
+    window.changePage = changePage;
+    
+    initializeApp();
+
+
+// เพิ่มการเรียกใช้ initializeApp ในจุดสิ้นสุดของ script
+window.onload = function() {
+  // เพิ่มการตรวจสอบเพิ่มเติม
+  console.log('Page loaded, calling initializeApp...');
+  if (typeof initializeApp === 'function') {
+    initializeApp();
+  } else {
+    console.error('initializeApp function not defined');
+  }
+};
+  </script>
+</body>
+
+</html>
