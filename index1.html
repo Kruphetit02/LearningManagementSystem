@@ -239,7 +239,7 @@
     let hasInitialData = false;
     let currentPage = 1;
     let lastSubmittedId = null;
-    let isLoading = true;
+    let isLoading = true; // เพิ่มตัวแปรนี้
     const itemsPerPage = 8;
     
     const STATUS_COLORS = {
@@ -255,6 +255,8 @@
       'approved': 'ตรวจแล้ว',
       'revision': 'ส่งกลับแก้ไข'
     };
+    
+
 
     const config = {
       background_color: "#f0f4f8",
@@ -267,190 +269,231 @@
       site_title: "ระบบจัดการประมวลการสอน"
     };
 
-    function initializeApp() {
-      console.log('=== initializeApp: Starting ===');
-      isLoading = true;
-      renderLoadingScreen();
+    // ปรับปรุงฟังก์ชัน initializeApp
+function initializeApp() {
+  console.log('=== initializeApp: Starting ===');
+  isLoading = true;
+  renderLoadingScreen();
 
-      if (currentUser) {
-        google.script.run
-          .withSuccessHandler(handleDataSuccess)
-          .withFailureHandler(handleDataFailure)
-          .getAllSyllabus(currentUser.role, currentUser.group);
-      } else {
-        google.script.run
-          .withSuccessHandler(handleDataSuccess)
-          .withFailureHandler(handleDataFailure)
-          .getAllSyllabus();
-      }
+  // ส่งพารามิเตอร์เฉพาะเมื่อ login แล้ว
+  if (currentUser) {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus(currentUser.role, currentUser.group);
+  } else {
+    // ถ้ายังไม่ login ให้ดึงข้อมูลทั้งหมด
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus();
+  }
+}
+
+// แก้ไขฟังก์ชัน handleDataSuccess
+function handleDataSuccess(data) {
+  console.log('=== Data Received ===');
+  console.log('Data received from server:', data);
+  console.log('Data type:', typeof data);
+  console.log('Is Array:', Array.isArray(data));
+  
+  if (data === undefined || data === null) {
+    console.error('Received null or undefined data');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+    return;
+  }
+  
+  if (Array.isArray(data)) {
+    console.log('Raw data array:', data);
+    syllabusData = data;
+    currentRecordCount = syllabusData.length;
+    console.log('Successfully loaded', syllabusData.length, 'records');
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+  } else if (typeof data === 'object' && data.hasOwnProperty('success') && !data.success) {
+    console.error('Server returned error:', data.message || 'Unknown error');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+    
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่สามารถโหลดข้อมูลได้',
+      text: data.message || 'ไม่พบข้อมูลในระบบหรือเกิดข้อผิดพลาดในการโหลด',
+      confirmButtonText: 'รีเฟรช'
+    }).then(() => {
+      location.reload();
+    });
+  } else {
+    console.warn('Received unexpected data format, initializing empty array');
+    syllabusData = [];
+    currentRecordCount = 0;
+    hasInitialData = true;
+    isLoading = false;
+    renderApp();
+  }
+}
+
+function handleDataFailure(error) {
+  console.error('=== Error Loading Data ===');
+  console.error('Error:', error);
+  syllabusData = [];
+  currentRecordCount = 0;
+  hasInitialData = true;
+  isLoading = false;
+  renderApp();
+  
+  Swal.fire({
+    icon: 'warning',
+    title: 'ไม่สามารถโหลดข้อมูลได้',
+    text: error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+    confirmButtonText: 'รีเฟรช',
+  }).then((result) => {
+    if (result.isConfirmed) {
+      location.reload();
     }
+  });
+}
 
-    function handleDataSuccess(data) {
-      console.log('=== Data Received ===');
-      console.log('Data received from server:', data);
-      console.log('Data type:', typeof data);
-      console.log('Is Array:', Array.isArray(data));
-      
-      if (data === undefined || data === null) {
-        console.error('Received null or undefined data');
-        syllabusData = [];
-        currentRecordCount = 0;
-        hasInitialData = true;
-        isLoading = false;
-        renderApp();
-        return;
-      }
-      
-      if (Array.isArray(data)) {
-        console.log('Raw data array:', data);
-        syllabusData = data;
-        currentRecordCount = syllabusData.length;
-        console.log('Successfully loaded', syllabusData.length, 'records');
-        hasInitialData = true;
-        isLoading = false;
-        renderApp();
-      } else if (typeof data === 'object' && data.hasOwnProperty('success') && !data.success) {
-        console.error('Server returned error:', data.message || 'Unknown error');
-        syllabusData = [];
-        currentRecordCount = 0;
-        hasInitialData = true;
-        isLoading = false;
-        renderApp();
+
+function reloadData() {
+  console.log('Reloading data...');
+  
+  return new Promise((resolve, reject) => {
+    if (currentUser) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (Array.isArray(data)) {
+            syllabusData = data;
+            currentRecordCount = syllabusData.length;
+            resolve(data);
+          } else {
+            syllabusData = [];
+            currentRecordCount = 0;
+            resolve([]);
+          }
+        })
+        .withFailureHandler(reject)
+        .getAllSyllabus(currentUser.role, currentUser.group);
+    } else {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (Array.isArray(data)) {
+            syllabusData = data;
+            currentRecordCount = syllabusData.length;
+            resolve(data);
+          } else {
+            syllabusData = [];
+            currentRecordCount = 0;
+            resolve([]);
+          }
+        })
+        .withFailureHandler(reject)
+        .getAllSyllabus();
+    }
+  });
+}
+
+
+
+// function debugData() {
+//   console.log('=== Manual Debug ===');
+//   console.log('syllabusData:', syllabusData);
+//   console.log('Length:', syllabusData ? syllabusData.length : 'undefined');
+//   console.log('Current View:', currentView);
+//   console.log('Is Loading:', isLoading);
+//   console.log('Has Initial Data:', hasInitialData);
+//   console.log('Current User:', currentUser);
+  
+//   Swal.fire({
+//     title: 'ตรวจสอบข้อมูลปัจจุบัน',
+//     html: `
+//       <div style="text-align: left;">
+//         <p><strong>Data Length:</strong> ${syllabusData ? syllabusData.length : 0}</p>
+//         <p><strong>Current View:</strong> ${currentView}</p>
+//         <p><strong>Is Loading:</strong> ${isLoading}</p>
+//         <p><strong>Has Initial Data:</strong> ${hasInitialData}</p>
+//         <p><strong>Current User:</strong> ${currentUser ? currentUser.username : 'Not logged in'}</p>
+//         ${syllabusData && syllabusData.length > 0 ? 
+//           `<p><strong>First Record:</strong> ${JSON.stringify(syllabusData[0])}</p>` : 
+//           '<p><strong>No records available</strong></p>'
+//         }
+//       </div>
+//     `,
+//     width: 600
+//   });
+// }
+
+
+
+
+// เพิ่มฟังก์ชันนี้ใหม่
+function reloadData() {
+  console.log('Reloading data...');
+  
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        console.log('Data reloaded:', data);
         
-        Swal.fire({
-          icon: 'error',
-          title: 'ไม่สามารถโหลดข้อมูลได้',
-          text: data.message || 'ไม่พบข้อมูลในระบบหรือเกิดข้อผิดพลาดในการโหลด',
-          confirmButtonText: 'รีเฟรช'
-        }).then(() => {
-          location.reload();
-        });
-      } else {
-        console.warn('Received unexpected data format, initializing empty array');
-        syllabusData = [];
-        currentRecordCount = 0;
-        hasInitialData = true;
-        isLoading = false;
-        renderApp();
-      }
-    }
-
-    function handleDataFailure(error) {
-      console.error('=== Error Loading Data ===');
-      console.error('Error:', error);
-      syllabusData = [];
-      currentRecordCount = 0;
-      hasInitialData = true;
-      isLoading = false;
-      renderApp();
-      
-      Swal.fire({
-        icon: 'warning',
-        title: 'ไม่สามารถโหลดข้อมูลได้',
-        text: error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
-        confirmButtonText: 'รีเฟรช',
-      }).then((result) => {
-        if (result.isConfirmed) {
-          location.reload();
-        }
-      });
-    }
-
-    function reloadData() {
-      console.log('Reloading data...');
-      
-      return new Promise((resolve, reject) => {
-        if (currentUser) {
-          google.script.run
-            .withSuccessHandler(function(data) {
-              if (Array.isArray(data)) {
-                syllabusData = data;
-                currentRecordCount = syllabusData.length;
-                resolve(data);
-              } else {
-                syllabusData = [];
-                currentRecordCount = 0;
-                resolve([]);
-              }
-            })
-            .withFailureHandler(reject)
-            .getAllSyllabus(currentUser.role, currentUser.group);
+        if (Array.isArray(data)) {
+          syllabusData = data;
+          currentRecordCount = syllabusData.length;
+          console.log('Updated syllabusData with', syllabusData.length, 'records');
+          resolve(data);
         } else {
-          google.script.run
-            .withSuccessHandler(function(data) {
-              if (Array.isArray(data)) {
-                syllabusData = data;
-                currentRecordCount = syllabusData.length;
-                resolve(data);
-              } else {
-                syllabusData = [];
-                currentRecordCount = 0;
-                resolve([]);
-              }
-            })
-            .withFailureHandler(reject)
-            .getAllSyllabus();
+          console.warn('Reloaded data is not an array');
+          syllabusData = [];
+          currentRecordCount = 0;
+          resolve([]);
         }
-      });
-    }
-
-    function reloadData() {
-      console.log('Reloading data...');
-      
-      return new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(function(data) {
-            console.log('Data reloaded:', data);
-            
-            if (Array.isArray(data)) {
-              syllabusData = data;
-              currentRecordCount = syllabusData.length;
-              console.log('Updated syllabusData with', syllabusData.length, 'records');
-              resolve(data);
-            } else {
-              console.warn('Reloaded data is not an array');
-              syllabusData = [];
-              currentRecordCount = 0;
-              resolve([]);
-            }
-          })
-          .withFailureHandler(function(error) {
-            console.error('Failed to reload data:', error);
-            reject(error);
-          })
-          .getAllSyllabus();
-      });
-    }
-        
+      })
+      .withFailureHandler(function(error) {
+        console.error('Failed to reload data:', error);
+        reject(error);
+      })
+      .getAllSyllabus();
+  });
+}
+    
     function renderLoadingScreen() {
-      const config = getConfig();
+  const config = getConfig();
+  
+  return `
+    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: ${config.background_color};">
+      <div style="width: 80px; height: 80px; border: 6px solid #f3f3f3; border-top: 6px solid ${config.primary_action_color}; border-radius: 50%; animation: spin 1.5s linear infinite;"></div>
+      <h2 style="margin-top: 1.5rem; font-size: 1.25rem; color: ${config.text_color};">กำลังโหลดข้อมูล...</h2>
+      <p style="margin-top: 0.5rem; color: ${config.text_color}; opacity: 0.7;">กรุณารอสักครู่</p>
       
-      return `
-        <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: ${config.background_color};">
-          <div style="width: 80px; height: 80px; border: 6px solid #f3f3f3; border-top: 6px solid ${config.primary_action_color}; border-radius: 50%; animation: spin 1.5s linear infinite;"></div>
-          <h2 style="margin-top: 1.5rem; font-size: 1.25rem; color: ${config.text_color};">กำลังโหลดข้อมูล...</h2>
-          <p style="margin-top: 0.5rem; color: ${config.text_color}; opacity: 0.7;">กรุณารอสักครู่</p>
-          
-          <style>
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-        </div>
-      `;
-    }
-        
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
+  `;
+}
+    
     function getConfig() {
       return defaultConfig;
     }
-        
+    
+    // ปรับปรุงฟังก์ชัน renderApp
     function renderApp() {
       console.log('Rendering app. Current view:', currentView, 'Loading:', isLoading);
   
       const config = getConfig();
       const app = document.getElementById('app');
       
+      // ถ้ายังโหลดอยู่ ให้แสดงหน้า loading
       if (isLoading || !hasInitialData) {
         renderLoadingScreen();
         return;
@@ -486,7 +529,7 @@
               <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
               <h2 style="font-size: ${config.font_size * 1.5}px; color: ${config.text_color}; margin-bottom: 1rem;">เกิดข้อผิดพลาด</h2>
               <p style="font-size: ${config.font_size}px; color: ${config.text_color}; opacity: 0.7; margin-bottom: 1.5rem;">${error.message}</p>
-              <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background-color: ${config.primary_action_color}; color: white; border: none; border-radius: 0.5rem; font-size: ${config.font_size}px;">
+              <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background-color: ${config.primary_action_color}; color: white; border: none; border-radius: 0.5rem; font-size: ${config.font_size}px; cursor: pointer;">
                 รีเฟรชหน้าเว็บ
               </button>
             </div>
@@ -495,44 +538,48 @@
       }
     }
 
-    function setupAutoRefresh() {
-      setInterval(() => {
-        console.log('Auto-refreshing data...');
-        isLoading = true;
-        
-        if (currentUser) {
-          google.script.run
-            .withSuccessHandler(handleDataSuccess)
-            .withFailureHandler(handleDataFailure)
-            .getAllSyllabus(currentUser.role, currentUser.group);
-        } else {
-          google.script.run
-            .withSuccessHandler(handleDataSuccess)
-            .withFailureHandler(handleDataFailure)
-            .getAllSyllabus();
-        }
-      }, 60000);
-    }
 
-    function initializeApp() {
-      console.log('=== initializeApp: Starting ===');
-      isLoading = true;
-      renderLoadingScreen();
-
-      if (currentUser) {
-        google.script.run
-          .withSuccessHandler(handleDataSuccess)
-          .withFailureHandler(handleDataFailure)
-          .getAllSyllabus(currentUser.role, currentUser.group);
-      } else {
-        google.script.run
-          .withSuccessHandler(handleDataSuccess)
-          .withFailureHandler(handleDataFailure)
-          .getAllSyllabus();
-      }
-      
-      setupAutoRefresh();
+// เพิ่มฟังก์ชันสำหรับรีโหลดข้อมูลทุกๆ นาที
+function setupAutoRefresh() {
+  setInterval(() => {
+    console.log('Auto-refreshing data...');
+    isLoading = true;
+    
+    if (currentUser) {
+      google.script.run
+        .withSuccessHandler(handleDataSuccess)
+        .withFailureHandler(handleDataFailure)
+        .getAllSyllabus(currentUser.role, currentUser.group);
+    } else {
+      google.script.run
+        .withSuccessHandler(handleDataSuccess)
+        .withFailureHandler(handleDataFailure)
+        .getAllSyllabus();
     }
+  }, 60000); // ทุกๆ 60 วินาที
+}
+
+// แก้ไขฟังก์ชัน initializeApp ให้เรียกใช้ auto-refresh
+function initializeApp() {
+  console.log('=== initializeApp: Starting ===');
+  isLoading = true;
+  renderLoadingScreen();
+
+  if (currentUser) {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus(currentUser.role, currentUser.group);
+  } else {
+    google.script.run
+      .withSuccessHandler(handleDataSuccess)
+      .withFailureHandler(handleDataFailure)
+      .getAllSyllabus();
+  }
+  
+  // เพิ่มการตั้งค่า auto-refresh
+  setupAutoRefresh();
+}
 
  // ----------------------------------------------------------
 // renderHomePage  ✅ Fixed: footer ออกนอก content wrapper
@@ -560,7 +607,7 @@ function renderHomePage(config, baseSize) {
             <p style="font-size:${baseSize * 1.1}px;color:${textColor};
                       padding:0.4rem 1.2rem;border:2px solid #22c55e;
                       border-radius:9999px;display:inline-block;margin-top:0.5rem;">
-              จัดการแผนการเรียนรู้ได้อย่างมีประสิทธิภาพ
+              จัดการประมวลการสอนได้อย่างมีประสิทธิภาพ
             </p>
           </header>
  
@@ -571,7 +618,7 @@ function renderHomePage(config, baseSize) {
             </h2>
             <p style="font-size:${baseSize}px;color:${textColor};opacity:0.8;
                       line-height:1.6;margin-bottom:2rem;">
-              ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ ช่วยให้การส่งและตรวจสอบเอกสารเป็นไปอย่างรวดเร็วและมีประสิทธิภาพ
+              ระบบจัดการประมวลการสอนออนไลน์ ช่วยให้การส่งและตรวจสอบเอกสารเป็นไปอย่างรวดเร็วและมีประสิทธิภาพ
             </p>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
                         gap:1.5rem;margin-bottom:2rem;">
@@ -777,7 +824,7 @@ function renderSubmitForm(config, baseSize) {
  
           <div style="text-align:center;margin-bottom:2rem;">
             <h2 style="font-size:${baseSize*2}px;font-weight:700;color:${textColor};margin-bottom:0.5rem;">
-              แบบฟอร์มนำแผนการจัดการเรียนรู้
+              แบบฟอร์มนำส่งประมวลการสอน
             </h2>
             <p style="font-size:${baseSize}px;color:${textColor};opacity:0.7;">
               กรุณากรอกข้อมูลให้ครบถ้วนและตรวจสอบความถูกต้องก่อนนำส่ง
@@ -805,7 +852,7 @@ function renderSubmitForm(config, baseSize) {
                                     color:${textColor};margin-bottom:0.5rem;">
                         รหัสวิชา <span style="color:#dc3545;">*</span>
                       </label>
-                      <input type="text" id="courseCode" required placeholder="เช่น ว33101"
+                      <input type="text" id="courseCode" required placeholder="เช่น CS101"
                              style="${fieldStyle()}"
                              onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                              onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -815,7 +862,7 @@ function renderSubmitForm(config, baseSize) {
                                     color:${textColor};margin-bottom:0.5rem;">
                         ชื่อรายวิชา <span style="color:#dc3545;">*</span>
                       </label>
-                      <input type="text" id="courseName" required placeholder="เช่น วิทยาการคำนวณ 3"
+                      <input type="text" id="courseName" required placeholder="เช่น การเขียนโปรแกรมคอมพิวเตอร์"
                              style="${fieldStyle()}"
                              onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                              onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -824,9 +871,9 @@ function renderSubmitForm(config, baseSize) {
                   <div>
                     <label style="display:block;font-size:${baseSize*0.875}px;font-weight:600;
                                   color:${textColor};margin-bottom:0.5rem;">
-                      ครูผู้สอน <span style="color:#dc3545;">*</span>
+                      อาจารย์ผู้สอน <span style="color:#dc3545;">*</span>
                     </label>
-                    <input type="text" id="instructor" required placeholder="เช่น นายชัยรัตน์ มานิช"
+                    <input type="text" id="instructor" required placeholder="เช่น ดร.สมชาย ใจดี"
                            style="${fieldStyle()}"
                            onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                            onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -856,6 +903,7 @@ function renderSubmitForm(config, baseSize) {
                       <option value="">เลือก</option>
                       <option value="1">ภาคเรียนที่ 1</option>
                       <option value="2">ภาคเรียนที่ 2</option>
+                      <option value="3">ภาคเรียนที่ 3</option>
                     </select>
                   </div>
                   <div>
@@ -863,7 +911,7 @@ function renderSubmitForm(config, baseSize) {
                                   color:${textColor};margin-bottom:0.5rem;">
                       ปีการศึกษา <span style="color:#dc3545;">*</span>
                     </label>
-                    <input type="text" id="academicYear" required placeholder="2569"
+                    <input type="text" id="academicYear" required placeholder="2567"
                            style="${fieldStyle()}"
                            onfocus="this.style.borderColor='${secondaryColor}'"
                            onblur="this.style.borderColor='${bgColor}'">
@@ -871,20 +919,15 @@ function renderSubmitForm(config, baseSize) {
                   <div>
                     <label style="display:block;font-size:${baseSize*0.875}px;font-weight:600;
                                   color:${textColor};margin-bottom:0.5rem;">
-                      กลุ่มสาระการเรียนรู้ <span style="color:#dc3545;">*</span>
+                      กลุ่มเรียน <span style="color:#dc3545;">*</span>
                     </label>
                     <select id="group" required style="${fieldStyle()}"
                             onfocus="this.style.borderColor='${secondaryColor}'"
                             onblur="this.style.borderColor='${bgColor}'">
-                      <option value="">เลือกกลุ่มสาระการเรียนรู้</option>
-                      <option value="ภาษาไทย">ภาษาไทย</option>
-                      <option value="คณิตศาสตร์">คณิตศาสตร์</option>
-                      <option value="วิทยาศาสตร์และเทคโนโลยี">วิทยาศาสตร์และเทคโนโลยี</option>
-                      <option value="สังคมศึกษา ศาสนา และวัฒนธรรม">สังคมศึกษา ศาสนา และวัฒนธรรม</option>
-                      <option value="สุขศึกษาและพลศึกษา">สุขศึกษาและพลศึกษา</option>
-                      <option value="ศิลปะ">ศิลปะ</option>
-                      <option value="การงานอาชีพ">การงานอาชีพ</option>
-                      <option value="ภาษาต่างประเทศ">ภาษาต่างประเทศ</option>
+                      <option value="">เลือกกลุ่ม</option>
+                      <option value="สาขาสุขภาพดิจิทัล">สาขาสุขภาพดิจิทัล</option>
+                      <option value="สาขาชีวการแพทย์">สาขาชีวการแพทย์</option>
+                      <option value="สาขาเทคโนโลยีสุขภาพ">สาขาเทคโนโลยีสุขภาพ</option>
                     </select>
                   </div>
                 </div>
@@ -907,7 +950,7 @@ function renderSubmitForm(config, baseSize) {
                      onmouseout="this.style.borderColor='#f59e0b';this.style.backgroundColor='white'">
                   <div style="font-size:${baseSize*2.5}px;margin-bottom:1rem;">📄</div>
                   <p style="font-size:${baseSize*0.875}px;font-weight:600;color:${textColor};margin-bottom:0.5rem;">
-                    อัปโหลดไฟล์แผนการจัดการเรียนรู้
+                    อัปโหลดไฟล์ประมวลการสอน
                   </p>
                   <p style="font-size:${baseSize*0.75}px;color:${textColor};opacity:0.7;margin-bottom:1rem;">
                     รองรับไฟล์ PDF และ DOCX (ขนาดไม่เกิน 10MB)
@@ -1211,10 +1254,10 @@ function renderFooter(config, baseSize) {
                    width:100%;">
       <div style="max-width:1400px;margin:0 auto;text-align:center;">
         <p style="font-size:${baseSize*0.875}px;color:${textColor};opacity:0.7;margin-bottom:0.5rem;">
-          พัฒนาโดย <strong style="color:${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @ กรุงเทพมหานคร
+          พัฒนาโดย <strong style="color:${primaryColor};">พ่อมดตะนอย</strong> @พ่อมดไอที
         </p>
         <p style="font-size:${baseSize*0.75}px;color:${textColor};opacity:0.5;">
-          © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+          © ${new Date().getFullYear()} ระบบจัดการประมวลการสอน - สงวนลิขสิทธิ์
         </p>
       </div>
     </footer>
@@ -1498,12 +1541,12 @@ function renderNavbar({ gradient, activePage, ctaColor }) {
  
   return `
     <nav style="background:linear-gradient(135deg,${gradient});
-                box-shadow:0 4px 8px rgba(0,0,0,0.12);
+                box-shadow:0 2px 8px rgba(0,0,0,0.12);
                 position:sticky;top:0;z-index:100;">
       <div class="nav-inner">
         <div class="nav-brand">
-          <img src="https://img1.pic.in.th/images/wichakan.png" alt="Logo" style="height: 70px; width: auto; object-fit: contain;">
-          <h1>${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'}</h1>
+          <img src="https://lh3.googleusercontent.com/d/1osuHxECktGDtI5WOAtN5cjHBLD2UpA7l" alt="Logo">
+          <h1>${config.site_title || 'ระบบจัดการประมวลการสอน'}</h1>
         </div>
         <div class="nav-links">
           ${desktopLinks}
@@ -1649,27 +1692,103 @@ window.toggleMobileMenu = toggleMobileMenu;
     return;
   }
 
-      const fileUpload = document.getElementById('fileUpload');
-      if (fileUpload.files.length === 0) {
-        Swal.fire('ไม่มีไฟล์', 'กรุณาเลือกไฟล์เอกสาร', 'warning');
-        return;
+  if (isLogin) {
+    // === เข้าสู่ระบบ ===
+    Swal.fire({
+      title: 'กำลังเข้าสู่ระบบ...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
       }
+    });
 
-      const file = fileUpload.files[0];
-      const reader = new FileReader();
-
-      reader.onload = function(e) {
-        const fileData = e.target.result.split(',')[1];
-        const mimeType = file.type;
-
+    google.script.run
+      .withSuccessHandler(function(response) {
+        console.log('Login response:', response);
+        
+        if (response && response.success) {
+        currentUser = response.user;
+        sessionStorage.setItem('currentUser', JSON.stringify(response.user)); // ✅ เพิ่ม
+          Swal.fire({
+            icon: 'success',
+            title: 'เข้าสู่ระบบสำเร็จ!',
+            text: 'ยินดีต้อนรับ ' + response.user.fullname,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          setTimeout(() => handleNavigation('dashboard'), 1500);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'เข้าสู่ระบบไม่ได้',
+            text: response.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+            confirmButtonText: 'ตกลง'
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Login error:', error);
         Swal.fire({
-          title: 'กำลังส่งเอกสาร...',
-          html: 'กรุณารอสักครู่',
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          }
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้: ' + error.message,
+          confirmButtonText: 'ตกลง'
         });
+      })
+      .loginUser(username, password);
+
+  } else {
+    // === ลงทะเบียน ===
+    const fullname = document.getElementById('fullname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const userGroup = document.getElementById('userGroup').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    console.log('Registration data:', { username, fullname, email, userGroup });
+
+    // ตรวจสอบข้อมูล
+    if (!fullname || !email || !userGroup) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        text: 'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // ตรวจสอบรหัสผ่าน
+    if (password !== confirmPassword) {
+      Swal.fire({
+        icon: 'error',
+        title: 'รหัสผ่านไม่ตรงกัน',
+        text: 'กรุณาตรวจสอบรหัสผ่านและยืนยันรหัสผ่านให้ตรงกัน',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // ตรวจสอบอีเมล
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'อีเมลไม่ถูกต้อง',
+        text: 'กรุณากรอกอีเมลในรูปแบบที่ถูกต้อง',
+        confirmButtonText: 'ตกลง'
+      });
+      return;
+    }
+
+    // แสดง loading
+    Swal.fire({
+      title: 'กำลังลงทะเบียน...',
+      html: 'กรุณารอสักครู่',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     // สร้างข้อมูลผู้ใช้
     const userData = {
@@ -1945,7 +2064,7 @@ function generatePrintForm(data) {
             <!-- โลโก้ -->
             <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 6px;">
               <img 
-                src="${config.logo_url || 'https://img1.pic.in.th/images/logoc577678dae0d285f.png'}" 
+                src="${config.logo_url || 'https://img2.pic.in.th/pic/LOGO-pormodtanoy-V.2.png'}" 
                 alt="Logo"
                 style="
                   width: 90px; 
@@ -1957,11 +2076,11 @@ function generatePrintForm(data) {
             </div>
 
             <h1 style="font-size: 26px; font-weight: 700; margin: 0 0 6px 0; color: ${primaryColor};">
-              แบบฟอร์มนำส่งแผนการจัดการเรียนรู้
+              แบบฟอร์มนำส่งประมวลการสอน
             </h1>
 
             <p style="font-size: 14px; margin: 0; opacity: 0.8; color: ${textColor};">
-              ${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'}
+              ${config.site_title || 'ระบบจัดการประมวลการสอน'}
             </p>
           </div>
 
@@ -1991,7 +2110,7 @@ function generatePrintForm(data) {
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">${data.course_name}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">ครูผู้สอน:</td>
+            <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">อาจารย์ผู้สอน:</td>
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">${data.instructor}</td>
           </tr>
           <tr>
@@ -2039,7 +2158,7 @@ function generatePrintForm(data) {
               <div class="signature-line" style="border-top: 1px solid #000; padding-top: 5px;">
                 <p style="margin: 0; font-size: 13px;">ลงชื่อ ................................................</p>
                 <p style="margin: 3px 0 0 0; font-size: 13px;">(${data.instructor})</p>
-                <p style="margin: 3px 0 0 0; font-size: 13px; font-weight: 600;">ผู้ส่ง / ครูผู้สอน</p>
+                <p style="margin: 3px 0 0 0; font-size: 13px; font-weight: 600;">ผู้ส่ง / อาจารย์ผู้สอน</p>
                 <p style="margin: 6px 0 0 0; font-size: 13px;">วันที่ ......... / ......... / .........</p>
               </div>
             </div>
@@ -2065,8 +2184,8 @@ function generatePrintForm(data) {
           เอกสารฉบับนี้สร้างโดยระบบอัตโนมัติ
         </p>
         <p style="font-size: 12px; color: ${textColor}; opacity: 0.6; margin: 5px 0 0 0;">
-          ${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'} © ${new Date().getFullYear()}
-          พัฒนาโดย ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร
+          ${config.site_title || 'ระบบจัดการประมวลการสอน'} © ${new Date().getFullYear()}
+          พัฒนาโดย พ่อมดตะนอย @สุขภาพดิจิทัล
         </p>
       </div>
     </div>
@@ -2589,6 +2708,7 @@ function changeStatus(id) {
     
     function handleNavigation(view) {
       currentView = view;
+      currentPage = 1;
       renderApp();
     }
     
@@ -2666,7 +2786,7 @@ function editItem(id) {
           </div>
           <div>
             <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
-              ครูผู้สอน <span style="color: red;">*</span>
+              อาจารย์ผู้สอน <span style="color: red;">*</span>
             </label>
             <input type="text" id="editInstructor" value="${item.instructor || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
           </div>
@@ -2866,9 +2986,99 @@ function editItem(id) {
       } else {
         handleDataFailure({ message: 'รูปแบบข้อมูลไม่ถูกต้อง' });
       }
-    }
+    })
+    .withFailureHandler(handleDataFailure)
+    .getAllSyllabus(role, group); // ← ส่ง role/group จริง ไม่ใช่ string ว่าง
+}
 
-    window.addEventListener('load', initializeApp);
+  
+  // เรียกใช้ฟังก์ชันนี้แทน initializeApp โดยตรง
+        function initializeApp() {
+        console.log('=== initializeApp: Starting ===');
+
+        // ✅ กู้คืน session จาก sessionStorage ก่อนทุกอย่าง
+        const savedUser = sessionStorage.getItem('currentUser');
+        if (savedUser) {
+          try {
+            currentUser = JSON.parse(savedUser);
+            console.log('Session restored for user:', currentUser.username);
+          } catch (e) {
+            console.warn('Failed to parse saved session, clearing...');
+            sessionStorage.removeItem('currentUser');
+            currentUser = null;
+          }
+        }
+
+        isLoading = true;
+        renderLoadingScreen();
+        tryGetData();
+      }
+
+    
+    function showNotification(message, type = 'info') {
+      const config = getConfig();
+      const baseSize = config.font_size;
+      
+      const bgColors = {
+        success: '#d4edda',
+        error: '#f8d7da',
+        warning: '#fff3cd',
+        info: '#d1ecf1'
+      };
+      
+      const textColors = {
+        success: '#155724',
+        error: '#721c24',
+        warning: '#856404',
+        info: '#0c5460'
+      };
+      
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background-color: ${bgColors[type]};
+        color: ${textColors[type]};
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 2000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 400px;
+        font-size: ${baseSize * 0.875}px;
+      `;
+      
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+      }, 4000);
+    }
+    
+    window.handleNavigation = handleNavigation;
+    window.setFilter = setFilter;
+    window.clearSearch = clearSearch;
+    window.changeStatus = changeStatus;
+    window.deleteItem = deleteItem;
+    window.editItem = editItem;
+    window.printSubmitForm = printSubmitForm;
+    window.toggleAuthMode = toggleAuthMode;
+    window.handleLogout = handleLogout;
+    window.changePage = changePage;
+    
+    initializeApp();
+
+
+// เพิ่มการเรียกใช้ initializeApp ในจุดสิ้นสุดของ script
+window.onload = function() {
+  console.log('Page loaded, calling initializeApp...');
+  if (typeof initializeApp === 'function') {
+    initializeApp(); // ← เรียกซ้ำ ทำให้ state รีเซ็ต
+  }
+};
   </script>
 </body>
 
