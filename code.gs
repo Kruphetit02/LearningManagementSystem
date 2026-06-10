@@ -31,12 +31,12 @@ function doGet() {
     }
     
     const output = HtmlService.createHtmlOutputFromFile('index1')
-      .setTitle('ระบบจัดการประมวลการสอน')
+      .setTitle('ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์')
       .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png') // แก้ไขจุดที่ 3 : เปลี่ยนภาพ favicon ของท่านโดยฝากภาพโลโกไว้บนเว็บฝากภาพฟรี https://pic.in.th/?lang=th
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-      
+       
     return output;
     
   } catch (error) {
@@ -68,12 +68,14 @@ function initializeSheets() {
     let syllabusSheet = ss.getSheetByName(SHEETS.SYLLABUS);
     if (!syllabusSheet) {
       syllabusSheet = ss.insertSheet(SHEETS.SYLLABUS);
-      syllabusSheet.getRange('A1:M1').setValues([[
+      syllabusSheet.getRange('A1:R1').setValues([[
         'ID', 'รหัสวิชา', 'ชื่อวิชา', 'ครูผู้สอน', 'ภาคเรียน',
         'ปีการศึกษา', 'กลุ่มสาระ', 'สถานะ', 'วันที่ส่ง',
-        'หมายเหตุ', 'เวอร์ชัน', 'ไฟล์ ID', 'ไฟล์ URL'
+        'หมายเหตุ', 'เวอร์ชัน', 'ไฟล์ ID', 'ไฟล์ URL',
+        'หน่วยการเรียนรู้ทั้งหมด', 'หน่วยการเรียนรู้ที่ส่ง', 
+        'แผนการเรียนรู้ทั้งหมด', 'แผนการเรียนรู้ที่ส่ง'
       ]]);
-      syllabusSheet.getRange('A1:M1').setFontWeight('bold')
+      syllabusSheet.getRange('A1:R1').setFontWeight('bold')
         .setBackground('#4a90e2').setFontColor('#ffffff');
       syllabusSheet.setFrozenRows(1);
     }
@@ -169,7 +171,7 @@ function getAllSyllabus(userRole, userGroup) {
       return [];
     }
 
-    const data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
     Logger.log('getAllSyllabus: Raw data count = ' + data.length);
 
     const result = data
@@ -198,7 +200,11 @@ function getAllSyllabus(userRole, userGroup) {
           reviewer_notes: row[9]  ? row[9].toString()        : '',
           version:        row[10] ? row[10].toString()       : '1',
           file_id:        row[11] ? row[11].toString()       : '',
-          file_url:       row[12] ? row[12].toString()       : ''
+          file_url:       row[12] ? row[12].toString()       : '',
+          total_learning_units: row[13] ? parseInt(row[13]) || 0 : 0,
+          submitted_learning_units: row[14] ? parseInt(row[14]) || 0 : 0,
+          total_learning_plans: row[15] ? parseInt(row[15]) || 0 : 0,
+          submitted_learning_plans: row[16] ? parseInt(row[16]) || 0 : 0
         };
       });
 
@@ -261,7 +267,11 @@ function createSyllabus(data) {
       data.reviewer_notes || '',
       data.version || 1,
       data.file_id || '',
-      data.file_url || ''
+      data.file_url || '',
+      data.total_learning_units || 0,
+      data.submitted_learning_units || 0,
+      data.total_learning_plans || 0,
+      data.submitted_learning_plans || 0
     ]);
     
     Logger.log('Data saved successfully with ID: ' + id);
@@ -280,7 +290,11 @@ function createSyllabus(data) {
           group: data.group || '',
           status: statusNow,
           submitted_date: timestamp,
-          reviewer_notes: data.reviewer_notes || ''
+          reviewer_notes: data.reviewer_notes || '',
+          total_learning_units: data.total_learning_units || 0,
+          submitted_learning_units: data.submitted_learning_units || 0,
+          total_learning_plans: data.total_learning_plans || 0,
+          submitted_learning_plans: data.submitted_learning_plans || 0
         };
         Logger.log('📤 ส่ง Telegram (จาก createSyllabus)...');
         const tgResult = sendTelegramNotification(tgData);
@@ -332,7 +346,7 @@ function updateSyllabus(data) {
       return { success: false, message: 'ไม่มีข้อมูลในชีต' };
     }
     
-    const dataRange = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
     const searchId = data.id ? data.id.toString().trim() : '';
     
     let rowIndex = -1, existingData = null;
@@ -366,10 +380,14 @@ function updateSyllabus(data) {
       data.reviewer_notes || existingData[9] || '',
       data.version || existingData[10] || 1,
       data.file_id || existingData[11] || '',
-      data.file_url || existingData[12] || ''
+      data.file_url || existingData[12] || '',
+      data.total_learning_units !== undefined ? data.total_learning_units : (existingData[13] || 0),
+      data.submitted_learning_units !== undefined ? data.submitted_learning_units : (existingData[14] || 0),
+      data.total_learning_plans !== undefined ? data.total_learning_plans : (existingData[15] || 0),
+      data.submitted_learning_plans !== undefined ? data.submitted_learning_plans : (existingData[16] || 0)
     ]];
     
-    sheet.getRange(actualRow, 2, 1, 12).setValues(updateValues);
+    sheet.getRange(actualRow, 2, 1, 16).setValues(updateValues);
     Logger.log('Update successful for row: ' + actualRow);
     
     // ====== สร้าง emailData ไว้ใช้ทั้งส่งอีเมลและ debug ======
@@ -383,7 +401,11 @@ function updateSyllabus(data) {
       group: data.group || existingData[6],
       status: newStatus,
       submitted_date: formattedDate,
-      reviewer_notes: data.reviewer_notes || existingData[9] || ''
+      reviewer_notes: data.reviewer_notes || existingData[9] || '',
+      total_learning_units: data.total_learning_units !== undefined ? data.total_learning_units : (existingData[13] || 0),
+      submitted_learning_units: data.submitted_learning_units !== undefined ? data.submitted_learning_units : (existingData[14] || 0),
+      total_learning_plans: data.total_learning_plans !== undefined ? data.total_learning_plans : (existingData[15] || 0),
+      submitted_learning_plans: data.submitted_learning_plans !== undefined ? data.submitted_learning_plans : (existingData[16] || 0)
     };
     
     // ====== ส่วนแจ้งเตือน Telegram เฉพาะกรณียืนยันส่ง not_submitted → pending ======
@@ -479,7 +501,7 @@ function deleteSyllabus(id) {
     Logger.log('Deleting row: ' + actualRow);
     
     // ดึงข้อมูลก่อนลบเพื่อบันทึก log
-    const rowData = sheet.getRange(actualRow, 1, 1, 13).getValues()[0];
+    const rowData = sheet.getRange(actualRow, 1, 1, 17).getValues()[0];
     const courseCode = rowData[1] || 'Unknown';
     
     // ลบแถว
@@ -712,7 +734,11 @@ function getSyllabusById(id) {
     group: found[6],
     status: found[7],
     submitted_date: found[8],
-    reviewer_notes: found[9]
+    reviewer_notes: found[9],
+    total_learning_units: found[13] || 0,
+    submitted_learning_units: found[14] || 0,
+    total_learning_plans: found[15] || 0,
+    submitted_learning_plans: found[16] || 0
   };
 
   return { success: true, item };
@@ -862,7 +888,9 @@ function sendEmailNotification(syllabusData, userEmail, action) {
                 <tr><td style="padding: 8px 0; color: #666;">อาจารย์ผู้สอน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.instructor}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">ภาคเรียน/ปีการศึกษา:</td><td style="padding: 8px 0; color: #333;">${syllabusData.semester}/${syllabusData.academic_year}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">กลุ่มเรียน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.group}</td></tr>
-                <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px;">${statusThai}</span></td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">หน่วยการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_units || 0}/${syllabusData.total_learning_units || 0}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">แผนการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_plans || 0}/${syllabusData.total_learning_plans || 0}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 4px;">ตรวจแล้ว</span></td></tr>
                 <tr><td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td><td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes || '-'}</td></tr>
               </table>
             </div>
@@ -881,8 +909,8 @@ function sendEmailNotification(syllabusData, userEmail, action) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p>พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
-            <p>© ${new Date().getFullYear()} ระบบจัดการประมวลการสอน</p>
+            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร </strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()}ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
           </div>
         </div>
       `;
@@ -914,7 +942,9 @@ function sendEmailNotification(syllabusData, userEmail, action) {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 8px 0; color: #666;">รหัสวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td></tr>
-                <tr><td style="padding: 8px 0; color: #666;">สถานะใหม่:</td><td style="padding: 8px 0;"><span style="background-color: ${statusColor}; color: white; padding: 6px 16px; border-radius: 12px; font-weight: 600;">${statusIcon} ${statusThai}</span></td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">สถานะใหม่:</td><td style="padding: 8px 0;"><span style="background-color: ${statusColor}; color: white; padding: 6px 12px; border-radius: 4px;">${statusThai}</span></td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">หน่วยการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_units || 0}/${syllabusData.total_learning_units || 0}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">แผนการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_plans || 0}/${syllabusData.total_learning_plans || 0}</td></tr>
                 ${syllabusData.reviewer_notes ? `<tr><td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td><td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes}</td></tr>` : ''}
               </table>
             </div>
@@ -933,8 +963,8 @@ function sendEmailNotification(syllabusData, userEmail, action) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p>พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
-            <p>© ${new Date().getFullYear()} ระบบจัดการประมวลการสอน</p>
+            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร</strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
           </div>
         </div>
       `;
@@ -1029,7 +1059,11 @@ function testEmail() {
     group: 'สาขาสุขภาพดิจิทัล',
     status: 'approved',
     submitted_date: '2024-11-28 10:30:00',
-    reviewer_notes: 'ทดสอบการส่งอีเมล'
+    reviewer_notes: 'ทดสอบการส่งอีเมล',
+    total_learning_units: 45,
+    submitted_learning_units: 30,
+    total_learning_plans: 10,
+    submitted_learning_plans: 8
   };
   
   const result = sendEmailNotification(testData, testEmail, 'EDIT');
@@ -1051,7 +1085,11 @@ function testStatusChangeEmail() {
     group: 'สาขาสุขภาพดิจิทัล',
     status: 'revision',
     submitted_date: '2024-11-28 10:30:00',
-    reviewer_notes: 'กรุณาแก้ไขรูปแบบการเขียนใหม่'
+    reviewer_notes: 'กรุณาแก้ไขรูปแบบการเขียนใหม่',
+    total_learning_units: 45,
+    submitted_learning_units: 30,
+    total_learning_plans: 10,
+    submitted_learning_plans: 8
   };
   
   const result = sendEmailNotification(testData, testEmail, 'STATUS_CHANGE');
@@ -1083,6 +1121,8 @@ function sendTelegramNotification(syllabusData) {
       `👨‍🏫 *อาจารย์ผู้สอน:* ${syllabusData.instructor || '-'}\n` +
       `📆 *ภาคเรียน:* ${syllabusData.semester || '-'} / ${syllabusData.academic_year || '-'}\n` +
       `👥 *กลุ่มเรียน:* ${syllabusData.group || '-'}\n` +
+      `📖 *หน่วยการเรียนรู้:* ${syllabusData.submitted_learning_units || 0}/${syllabusData.total_learning_units || 0}\n` +
+      `📋 *แผนการเรียนรู้:* ${syllabusData.submitted_learning_plans || 0}/${syllabusData.total_learning_plans || 0}\n` +
       `✅ *สถานะ:* รอตรวจ (ผู้สอนได้กดยืนยันส่งแล้ว)\n` +
       `\n🕒 ${Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm น.')}`;
 
@@ -1138,11 +1178,14 @@ function testTelegram() {
     semester: '1',
     academic_year: '2568',
     group: 'IT',
-    status: 'pending'
+    status: 'pending',
+    total_learning_units: 45,
+    submitted_learning_units: 30,
+    total_learning_plans: 10,
+    submitted_learning_plans: 8
   };
   Logger.log('🚀 เริ่มทดสอบ Telegram...');
   const result = sendTelegramNotification(testData);
   Logger.log('✅ ผลการทดสอบ:', JSON.stringify(result));
   return result;
 }
-
