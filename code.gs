@@ -1,8 +1,8 @@
 // ====================================
 // อ้างอิง : https://www.youtube.com/@Pormodtanoy/videos
 // ====================================
-const SPREADSHEET_ID = '1QMwunrikf3ZTrvdNBvtbmMaikwsjM5psDAHxP6tzfSs'; // เปลี่ยนเป็น ไอดีสเปรดชีต
-const FOLDER_ID = '1NX3dZLuX1mwwzsKVWB1W-wJCCVRA7OFx'; // สร้างโฟลเดอร์ แล้าเอาไอดีโฟลเดอร์มมาใส่
+const SPREADSHEET_ID = '1QMwunrikf3ZTrvdNBvtbmMaikwsjM5psDAHxP6tzfSs'; // แก้ไขจุดที่ 1 : ใส่ ID spreadsheet ของท่าน 
+const FOLDER_ID = '1NX3dZLuX1mwwzsKVWB1W-wJCCVRA7OFx'; // แก้ไขจุดที่ 2 :  ใส่ ID Folder  สำหรับเก็บไฟล์
 
 // Sheet Names
 const SHEETS = {
@@ -30,9 +30,9 @@ function doGet() {
       initializeSheets();
     }
     
-    const output = HtmlService.createHtmlOutputFromFile('index')
+    const output = HtmlService.createHtmlOutputFromFile('index1')
       .setTitle('ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์')
-      .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png')
+      .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png') // แก้ไขจุดที่ 3 : เปลี่ยนภาพ favicon ของท่านโดยฝากภาพโลโกไว้บนเว็บฝากภาพฟรี https://pic.in.th/?lang=th
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
@@ -63,33 +63,37 @@ function doGet() {
 function initializeSheets() {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    
+
     // Create Syllabus Sheet
     let syllabusSheet = ss.getSheetByName(SHEETS.SYLLABUS);
     if (!syllabusSheet) {
       syllabusSheet = ss.insertSheet(SHEETS.SYLLABUS);
       syllabusSheet.getRange('A1:M1').setValues([[
-        'ID', 'รหัสวิชา', 'ชื่อวิชา', 'อาจารย์ผู้สอน', 'ภาคเรียน', 
-        'ปีการศึกษา', 'กลุ่มเรียน', 'สถานะ', 'วันที่ส่ง', 
+        'ID', 'รหัสวิชา', 'ชื่อวิชา', 'ครูผู้สอน', 'ภาคเรียน',
+        'ปีการศึกษา', 'กลุ่มสาระ', 'สถานะ', 'วันที่ส่ง',
         'หมายเหตุ', 'เวอร์ชัน', 'ไฟล์ ID', 'ไฟล์ URL'
       ]]);
       syllabusSheet.getRange('A1:M1').setFontWeight('bold')
         .setBackground('#4a90e2').setFontColor('#ffffff');
       syllabusSheet.setFrozenRows(1);
     }
-    
-    // Create Users Sheet with Role and Active columns
+
+    // บังคับคอลัมน์ F (ปีการศึกษา) ทั้งคอลัมน์เป็น plain text
+    // ป้องกัน Sheets แปลงค่าเป็น Date อัตโนมัติ
+    syllabusSheet.getRange('F:F').setNumberFormat('@STRING@');
+
+    // Create Users Sheet
     let usersSheet = ss.getSheetByName(SHEETS.USERS);
     if (!usersSheet) {
       usersSheet = ss.insertSheet(SHEETS.USERS);
       usersSheet.getRange('A1:H1').setValues([[
-        'Username', 'Password', 'ชื่อ-นามสกุล', 'อีเมล', 'กลุ่มเรียน', 'Role', 'Active', 'วันที่สมัคร'
+        'Username', 'Password', 'ชื่อ-นามสกุล', 'อีเมล', 'กลุ่มสาระ', 'Role', 'Active', 'วันที่สมัคร'
       ]]);
       usersSheet.getRange('A1:H1').setFontWeight('bold')
         .setBackground('#6b8e23').setFontColor('#ffffff');
       usersSheet.setFrozenRows(1);
     }
-    
+
     // Create Logs Sheet
     let logsSheet = ss.getSheetByName(SHEETS.LOGS);
     if (!logsSheet) {
@@ -101,13 +105,40 @@ function initializeSheets() {
         .setBackground('#9b59b6').setFontColor('#ffffff');
       logsSheet.setFrozenRows(1);
     }
-    
+
     return { success: true, message: 'Sheets initialized successfully' };
   } catch (error) {
     Logger.log('initializeSheets Error: ' + error.toString());
     return { success: false, message: error.toString() };
   }
 }
+
+
+function fixAcademicYearColumn() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('แผนการสอน');
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    Logger.log('No data to fix');
+    return;
+  }
+
+  // Set format คอลัมน์ F เป็น plain text ก่อน
+  sheet.getRange(2, 6, lastRow - 1, 1).setNumberFormat('@STRING@');
+
+  const values = sheet.getRange(2, 6, lastRow - 1, 1).getValues();
+  const fixed = values.map(row => {
+    const val = row[0];
+    if (val instanceof Date) {
+      return [Utilities.formatDate(val, 'GMT+7', 'yyyy')];
+    }
+    return [val ? val.toString().trim() : ''];
+  });
+
+  sheet.getRange(2, 6, lastRow - 1, 1).setValues(fixed);
+  Logger.log('Fixed ' + fixed.length + ' rows in academic_year column');
+}
+
 
 // ==================================== 
 // 1. แก้ไขฟังก์ชัน getAllSyllabus (ฝั่ง server)
@@ -117,59 +148,68 @@ function getAllSyllabus(userRole, userGroup) {
   try {
     Logger.log('getAllSyllabus: Starting...');
     Logger.log(`User role: ${userRole}, User group: ${userGroup}`);
-    
+
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     if (!ss) {
       Logger.log('getAllSyllabus: Cannot access spreadsheet');
       return [];
     }
-    
+
     const sheet = ss.getSheetByName(SHEETS.SYLLABUS);
     if (!sheet) {
       Logger.log('getAllSyllabus: Sheet not found');
       return [];
     }
-    
+
     const lastRow = sheet.getLastRow();
     Logger.log('getAllSyllabus: Last row = ' + lastRow);
-    
+
     if (lastRow <= 1) {
       Logger.log('getAllSyllabus: No data rows');
       return [];
     }
-    
-    // อ่านข้อมูลทั้งหมด (คอลัมน์ A-M)
+
     const data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
     Logger.log('getAllSyllabus: Raw data count = ' + data.length);
-    
+
     const result = data
       .filter(row => row[0] && row[0].toString().trim() !== '')
-      .map(row => ({
-        id: row[0] ? row[0].toString() : '',
-        course_code: row[1] ? row[1].toString() : '',
-        course_name: row[2] ? row[2].toString() : '',
-        instructor: row[3] ? row[3].toString() : '',
-        semester: row[4] ? row[4].toString() : '',
-        academic_year: row[5] ? row[5].toString() : '',
-        group: row[6] ? row[6].toString() : '',
-        status: row[7] ? row[7].toString() : 'pending',
-        submitted_date: row[8] ? row[8].toString() : '',
-        reviewer_notes: row[9] ? row[9].toString() : '',
-        version: row[10] ? row[10].toString() : '1',
-        file_id: row[11] ? row[11].toString() : '',
-        file_url: row[12] ? row[12].toString() : ''
-      }));
-    
+      .map(row => {
+        // ฟังก์ชันช่วยแปลงค่าปีการศึกษา (คอลัมน์ F = index 5)
+        // Sheets อาจแปลงตัวเลขหรือ "1/2569" เป็น Date อัตโนมัติ
+        const parseAcademicYear = (val) => {
+          if (val === null || val === undefined || val === '') return '';
+          if (val instanceof Date) {
+            return Utilities.formatDate(val, 'GMT+7', 'yyyy');
+          }
+          return val.toString().trim();
+        };
+
+        return {
+          id:             row[0]  ? row[0].toString()        : '',
+          course_code:    row[1]  ? row[1].toString()        : '',
+          course_name:    row[2]  ? row[2].toString()        : '',
+          instructor:     row[3]  ? row[3].toString()        : '',
+          semester:       row[4]  ? row[4].toString()        : '',
+          academic_year:  parseAcademicYear(row[5]),
+          group:          row[6]  ? row[6].toString()        : '',
+          status:         row[7]  ? row[7].toString()        : 'pending',
+          submitted_date: row[8]  ? row[8].toString()        : '',
+          reviewer_notes: row[9]  ? row[9].toString()        : '',
+          version:        row[10] ? row[10].toString()       : '1',
+          file_id:        row[11] ? row[11].toString()       : '',
+          file_url:       row[12] ? row[12].toString()       : ''
+        };
+      });
+
     Logger.log('getAllSyllabus: Filtered result count = ' + result.length);
-    
-    // กรองข้อมูลตามสิทธิ์ผู้ใช้
+
     if (userRole === 'admin') {
       Logger.log('getAllSyllabus: Admin accessing, returning all data');
       return result;
     } else if (userGroup) {
-      // แปลงกลุ่มให้เป็นตัวพิมพ์เล็กเพื่อเปรียบเทียบแบบไม่สนตัวพิมพ์
       const userGroupLower = userGroup.toLowerCase().trim();
-      const filtered = result.filter(item => 
+      const filtered = result.filter(item =>
         item.group && item.group.toLowerCase().trim() === userGroupLower
       );
       Logger.log(`getAllSyllabus: User group filter (${userGroup}), returning ${filtered.length} items`);
@@ -178,7 +218,7 @@ function getAllSyllabus(userRole, userGroup) {
       Logger.log('getAllSyllabus: No role/group, returning all data');
       return result;
     }
-    
+
   } catch (error) {
     Logger.log('getAllSyllabus Error: ' + error.toString());
     Logger.log('Error stack: ' + error.stack);
@@ -206,13 +246,8 @@ function createSyllabus(data) {
     }
     
     const id = data.id || Utilities.getUuid();
-    
-    // ✅ สร้างวันที่ในรูปแบบที่ถูกต้อง
     const timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
     
-    Logger.log('Generated timestamp: ' + timestamp);
-    
-    // เพิ่มข้อมูลลงในชีต
     sheet.appendRow([
       id,
       data.course_code || '',
@@ -222,7 +257,7 @@ function createSyllabus(data) {
       data.academic_year || '',
       data.group || '',
       data.status || 'pending',
-      timestamp, // ✅ ใช้ timestamp ที่ format แล้ว
+      timestamp,
       data.reviewer_notes || '',
       data.version || 1,
       data.file_id || '',
@@ -231,6 +266,30 @@ function createSyllabus(data) {
     
     Logger.log('Data saved successfully with ID: ' + id);
     
+    // 🟢 ถ้าการสร้างนี้มีสถานะเป็น 'pending' ถือว่าเป็น "การส่ง" → ส่ง Telegram
+    try {
+      const statusNow = data.status || 'pending';
+      if (statusNow === 'pending') {
+        const tgData = {
+          id: id,
+          course_code: data.course_code || '',
+          course_name: data.course_name || '',
+          instructor: data.instructor || '',
+          semester: data.semester || '',
+          academic_year: data.academic_year || '',
+          group: data.group || '',
+          status: statusNow,
+          submitted_date: timestamp,
+          reviewer_notes: data.reviewer_notes || ''
+        };
+        Logger.log('📤 ส่ง Telegram (จาก createSyllabus)...');
+        const tgResult = sendTelegramNotification(tgData);
+        Logger.log('📤 Telegram result:', JSON.stringify(tgResult));
+      }
+    } catch (tgErr) {
+      Logger.log('Non-fatal Telegram error in createSyllabus: ' + tgErr.toString());
+    }
+
     try {
       logActivity('CREATE', 'Created syllabus: ' + data.course_code);
     } catch (logError) {
@@ -254,7 +313,9 @@ function createSyllabus(data) {
     };
   }
 }
-
+// ====================================
+// updateSyllabus (ปรับแล้ว — Telegram ส่งเฉพาะยืนยันส่ง)
+// ====================================
 function updateSyllabus(data) {
   try {
     Logger.log('updateSyllabus called with data: ' + JSON.stringify(data));
@@ -267,43 +328,31 @@ function updateSyllabus(data) {
     }
     
     const lastRow = sheet.getLastRow();
-    
     if (lastRow <= 1) {
       return { success: false, message: 'ไม่มีข้อมูลในชีต' };
     }
     
     const dataRange = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
-    Logger.log('Total rows to search: ' + dataRange.length);
-    
     const searchId = data.id ? data.id.toString().trim() : '';
-    Logger.log('Searching for ID: "' + searchId + '"');
     
-    let rowIndex = -1;
-    let existingData = null;
-    
+    let rowIndex = -1, existingData = null;
     for (let i = 0; i < dataRange.length; i++) {
-      const cellId = dataRange[i][0] ? dataRange[i][0].toString().trim() : '';
-      if (cellId === searchId) {
+      if (dataRange[i][0]?.toString().trim() === searchId) {
         rowIndex = i;
         existingData = dataRange[i];
-        Logger.log('Found match at index: ' + i + ' (row ' + (i + 2) + ')');
         break;
       }
     }
     
     if (rowIndex === -1) {
-      Logger.log('ID not found. Available IDs: ' + dataRange.map(r => r[0]).join(', '));
       return { success: false, message: 'ไม่พบข้อมูล ID: ' + searchId };
     }
     
     const actualRow = rowIndex + 2;
-    Logger.log('Updating row: ' + actualRow);
-    
-    // ใช้ชื่ออาจารย์จากข้อมูลเดิมถ้าไม่มีใน data ที่ส่งมา
     const instructorName = data.instructor || existingData[3] || '';
-    Logger.log('Instructor name (from data or existing): "' + instructorName + '"');
-    
     const formattedDate = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd HH:mm:ss");
+    
+    const newStatus = data.status || existingData[7] || 'pending';
     
     const updateValues = [[
       data.course_code || existingData[1] || '',
@@ -312,7 +361,7 @@ function updateSyllabus(data) {
       data.semester || existingData[4] || '',
       data.academic_year || existingData[5] || '',
       data.group || existingData[6] || '',
-      data.status || existingData[7] || 'pending',
+      newStatus,
       formattedDate,
       data.reviewer_notes || existingData[9] || '',
       data.version || existingData[10] || 1,
@@ -321,73 +370,69 @@ function updateSyllabus(data) {
     ]];
     
     sheet.getRange(actualRow, 2, 1, 12).setValues(updateValues);
-    
     Logger.log('Update successful for row: ' + actualRow);
     
-    // ส่งอีเมลแจ้งเตือน
+    // ====== สร้าง emailData ไว้ใช้ทั้งส่งอีเมลและ debug ======
+    const emailData = {
+      id: data.id || existingData[0],
+      course_code: data.course_code || existingData[1],
+      course_name: data.course_name || existingData[2],
+      instructor: instructorName,
+      semester: data.semester || existingData[4],
+      academic_year: data.academic_year || existingData[5],
+      group: data.group || existingData[6],
+      status: newStatus,
+      submitted_date: formattedDate,
+      reviewer_notes: data.reviewer_notes || existingData[9] || ''
+    };
+    
+    // ====== ส่วนแจ้งเตือน Telegram เฉพาะกรณียืนยันส่ง not_submitted → pending ======
     try {
-      Logger.log('=== EMAIL NOTIFICATION START ===');
-      Logger.log('Instructor name to lookup: "' + instructorName + '"');
+      const originalStatus = data.originalStatus || existingData[7];
+      Logger.log('Telegram check - originalStatus:', originalStatus, 'newStatus:', newStatus);
       
-      if (instructorName && instructorName.trim() !== '') {
+      if (originalStatus === 'not_submitted' && newStatus === 'pending') {
+        Logger.log('📤 ส่ง Telegram (จาก updateSyllabus - ยืนยันส่ง)...');
+        const tgResult = sendTelegramNotification(emailData);
+        Logger.log('📤 Telegram result:', JSON.stringify(tgResult));
+      }
+    } catch (tgErr) {
+      Logger.log('Non-fatal Telegram error in updateSyllabus: ' + tgErr.toString());
+    }
+    
+    // ====== ส่วนส่งอีเมลแจ้งเตือนผู้สอน ======
+    try {
+      const hasStatusChanged = data.originalStatus && data.originalStatus !== data.status;
+      const action = hasStatusChanged ? 'STATUS_CHANGE' : 'EDIT';
+      Logger.log('Email action:', action);
+      Logger.log('originalStatus (from client):', data.originalStatus, 'newStatus (from client):', data.status);
+      
+      if (action === 'STATUS_CHANGE' || action === 'EDIT') {
         const userEmail = findUserEmail(instructorName.trim());
-        Logger.log('Email lookup result: ' + (userEmail || 'NOT FOUND'));
+        Logger.log('Email lookup result:', userEmail || 'NOT FOUND');
         
         if (userEmail) {
-          const emailData = {
-            id: data.id || existingData[0],
-            course_code: data.course_code || existingData[1],
-            course_name: data.course_name || existingData[2],
-            instructor: instructorName,
-            semester: data.semester || existingData[4],
-            academic_year: data.academic_year || existingData[5],
-            group: data.group || existingData[6],
-            status: data.status || existingData[7],
-            submitted_date: formattedDate,
-            reviewer_notes: data.reviewer_notes || existingData[9] || ''
-          };
-          
-          // กำหนด action: ถ้ามี originalStatus และต่างจาก status ปัจจุบัน = เปลี่ยนสถานะ
-          const hasStatusChanged = data.originalStatus && data.originalStatus !== data.status;
-          const action = hasStatusChanged ? 'STATUS_CHANGE' : 'EDIT';
-          
-          Logger.log('Email action: ' + action);
-          Logger.log('Original status: ' + data.originalStatus + ', New status: ' + data.status);
-          Logger.log('Sending email to: ' + userEmail);
-          
+          Logger.log('→ 📧 ส่งอีเมลถึง:', userEmail);
           const emailResult = sendEmailNotification(emailData, userEmail, action);
-          Logger.log('Email sent result: ' + JSON.stringify(emailResult));
+          Logger.log('Email send result:', JSON.stringify(emailResult));
         } else {
-          Logger.log('WARNING: No email found for instructor: ' + instructorName);
-          Logger.log('Please check if this name matches any user in the Users sheet');
+          Logger.log('WARNING: No email found for instructor:', instructorName);
         }
       } else {
-        Logger.log('ERROR: Instructor name is empty or invalid');
+        Logger.log('Skip email: no change action detected.');
       }
-      Logger.log('=== EMAIL NOTIFICATION END ===');
-    } catch (emailError) {
-      Logger.log('Email notification error (non-fatal): ' + emailError.toString());
-      Logger.log('Email error stack: ' + emailError.stack);
+    } catch (emailErr) {
+      Logger.log('Non-fatal Email error in updateSyllabus: ' + emailErr.toString());
     }
     
-    try {
-      logActivity('UPDATE', 'Updated syllabus: ' + (data.course_code || 'Unknown') + ' (ID: ' + data.id + ')');
-    } catch (logError) {
-      Logger.log('Non-fatal logging error: ' + logError.toString());
-    }
-    
+    logActivity('UPDATE', 'Updated syllabus: ' + (data.course_code || 'Unknown'));
     return { success: true, message: 'อัปเดตข้อมูลสำเร็จ' };
     
   } catch (error) {
-    Logger.log('updateSyllabus Error: ' + error.toString());
-    Logger.log('Error stack: ' + error.stack);
-    return { 
-      success: false, 
-      message: 'เกิดข้อผิดพลาด: ' + error.toString() 
-    };
+    Logger.log('updateSyllabus Error:', error.toString());
+    return { success: false, message: 'เกิดข้อผิดพลาด: ' + error.toString() };
   }
 }
-
 
 
 function deleteSyllabus(id) {
@@ -768,46 +813,30 @@ function getFolderUrl() {
 }
 
 // ====================================
-// Email Notification
+// Email Notification (เหมือนเดิม — แจ้งทุกการเปลี่ยนแปลง)
 // ====================================
-function sendEmailNotification(syllabusData, userEmail, action, attempts = 1) {
+function sendEmailNotification(syllabusData, userEmail, action) {
   try {
-    Logger.log('Sending email to: ' + (userEmail || 'undefined'));
-    
-    // เพิ่มการตรวจสอบหลายระดับ
-    if (!userEmail || userEmail.toString().trim() === '' || userEmail === 'undefined') {
-      Logger.log('No email provided, skipping notification');
+    if (!userEmail || !userEmail.trim() || userEmail === 'undefined') {
       return { success: false, message: 'ไม่มีอีเมลผู้รับ' };
     }
-    
-    // แปลง userEmail เป็น string และตรวจสอบค่า
+
     const emailStr = userEmail.toString().trim();
-    if (!emailStr || emailStr === '') {
-      Logger.log('Invalid email format: ' + userEmail);
-      return { success: false, message: 'รูปแบบอีเมลไม่ถูกต้อง' };
-    }
-    
-    // ตรวจสอบรูปแบบอีเมลพื้นฐาน
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailStr)) {
-      Logger.log('Invalid email format detected: ' + emailStr);
       return { success: false, message: 'รูปแบบอีเมลไม่ถูกต้อง' };
     }
-    
-    // กำหนดสถานะเป็นภาษาไทย
+
     const statusLabels = {
       'not_submitted': 'ยังไม่ส่ง',
       'pending': 'รอตรวจ',
       'approved': 'ตรวจแล้ว',
       'revision': 'ส่งกลับแก้ไข'
     };
-    
     const statusThai = statusLabels[syllabusData.status] || syllabusData.status;
-    
-    // กำหนด subject และ body ตาม action
-    let subject = '';
-    let body = '';
-    
+
+    let subject = '', body = '';
+
     if (action === 'EDIT') {
       subject = '📝 แจ้งเตือน: ข้อมูลประมวลการสอนถูกแก้ไขแล้ว';
       body = `
@@ -827,45 +856,19 @@ function sendEmailNotification(syllabusData, userEmail, action, attempts = 1) {
             
             <div style="background-color: #f0f7ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4a90e2; margin: 20px 0;">
               <h3 style="color: #4a90e2; margin-top: 0; margin-bottom: 15px; font-size: 18px;">📋 รายละเอียด</h3>
-              
               <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #666; width: 40%;">รหัสวิชา:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">อาจารย์ผู้สอน:</td>
-                  <td style="padding: 8px 0; color: #333;">${syllabusData.instructor}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">ภาคเรียน/ปีการศึกษา:</td>
-                  <td style="padding: 8px 0; color: #333;">${syllabusData.semester}/${syllabusData.academic_year}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">กลุ่มเรียน:</td>
-                  <td style="padding: 8px 0; color: #333;">${syllabusData.group}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">สถานะ:</td>
-                  <td style="padding: 8px 0;">
-                    <span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: 500;">
-                      ${statusThai}
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td>
-                  <td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes || '-'}</td>
-                </tr>
+                <tr><td style="padding: 8px 0; color: #666;">รหัสวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">ครูผู้สอน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.instructor}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">ภาคเรียน/ปีการศึกษา:</td><td style="padding: 8px 0; color: #333;">${syllabusData.semester}/${syllabusData.academic_year}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">กลุ่มเรียน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.group}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px;">${statusThai}</span></td></tr>
+                <tr><td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td><td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes || '-'}</td></tr>
               </table>
             </div>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-              <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+              <p style="color: #666; font-size: 14px;">
                 วันที่แก้ไข: <strong>${Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm น.')}</strong>
               </p>
             </div>
@@ -878,28 +881,18 @@ function sendEmailNotification(syllabusData, userEmail, action, attempts = 1) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p style="margin: 5px 0;">พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
-            <p style="margin: 5px 0;">© ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
+            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร </strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()}ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
           </div>
         </div>
       `;
     } else if (action === 'STATUS_CHANGE') {
       subject = '🔔 แจ้งเตือน: สถานะประมวลการสอนเปลี่ยนแปลง';
       
-      // กำหนดสีตามสถานะ
-      let statusColor = '#28a745';
-      let statusIcon = '✅';
-      
-      if (syllabusData.status === 'pending') {
-        statusColor = '#ffc107';
-        statusIcon = '⏳';
-      } else if (syllabusData.status === 'revision') {
-        statusColor = '#fd7e14';
-        statusIcon = '🔄';
-      } else if (syllabusData.status === 'not_submitted') {
-        statusColor = '#dc3545';
-        statusIcon = '❌';
-      }
+      let statusColor = '#28a745', statusIcon = '✅';
+      if (syllabusData.status === 'pending') { statusColor = '#ffc107'; statusIcon = '⏳'; }
+      else if (syllabusData.status === 'revision') { statusColor = '#fd7e14'; statusIcon = '🔄'; }
+      else if (syllabusData.status === 'not_submitted') { statusColor = '#dc3545'; statusIcon = '❌'; }
       
       body = `
         <div style="font-family: 'Sarabun', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
@@ -918,35 +911,16 @@ function sendEmailNotification(syllabusData, userEmail, action, attempts = 1) {
             
             <div style="background-color: #f0f7ff; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColor}; margin: 20px 0;">
               <h3 style="color: ${statusColor}; margin-top: 0; margin-bottom: 15px; font-size: 18px;">📋 รายละเอียด</h3>
-              
               <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #666; width: 40%;">รหัสวิชา:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td>
-                  <td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #666;">สถานะใหม่:</td>
-                  <td style="padding: 8px 0;">
-                    <span style="background-color: ${statusColor}; color: white; padding: 6px 16px; border-radius: 12px; font-size: 16px; font-weight: 600;">
-                      ${statusIcon} ${statusThai}
-                    </span>
-                  </td>
-                </tr>
-                ${syllabusData.reviewer_notes ? `
-                <tr>
-                  <td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td>
-                  <td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes}</td>
-                </tr>
-                ` : ''}
+                <tr><td style="padding: 8px 0; color: #666;">รหัสวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">สถานะใหม่:</td><td style="padding: 8px 0;"><span style="background-color: ${statusColor}; color: white; padding: 6px 16px; border-radius: 12px; font-weight: 600;">${statusIcon} ${statusThai}</span></td></tr>
+                ${syllabusData.reviewer_notes ? `<tr><td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td><td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes}</td></tr>` : ''}
               </table>
             </div>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-              <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+              <p style="color: #666; font-size: 14px;">
                 วันที่อัปเดต: <strong>${Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm น.')}</strong>
               </p>
             </div>
@@ -959,42 +933,23 @@ function sendEmailNotification(syllabusData, userEmail, action, attempts = 1) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p style="margin: 5px 0;">พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
-            <p style="margin: 5px 0;">© ${new Date().getFullYear()} ระบบจัดการประมวลการสอน</p>
+            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร</strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
           </div>
         </div>
       `;
     }
     
-    // ส่งอีเมล
-     try {
-      MailApp.sendEmail({
-        to: emailStr,
-        subject: subject,
-        htmlBody: body,
-        noReply: true
-      });
-      
-      Logger.log('Email sent successfully to: ' + emailStr);
-      return { success: true, message: 'ส่งอีเมลสำเร็จ' };
-    } catch (sendError) {
-      Logger.log('Failed to send email: ' + sendError.toString());
-      
-      // พยายามใหม่อีกครั้งหากยังไม่เกินจำนวนครั้งที่กำหนด
-      if (attempts < 3) {
-        Logger.log('Retrying email send... Attempt ' + (attempts + 1));
-        Utilities.sleep(1000); // รอ 1 วินาทีก่อนลองใหม่
-        return sendEmailNotification(syllabusData, userEmail, action, attempts + 1);
-      }
-      
-      return { success: false, message: 'ไม่สามารถส่งอีเมลได้: ' + sendError.toString() };
-    }
-    
+    MailApp.sendEmail({ to: emailStr, subject, htmlBody: body, noReply: true });
+    Logger.log('✅ อีเมลส่งถึง:', emailStr);
+    return { success: true };
+
   } catch (error) {
-    Logger.log('sendEmailNotification Error: ' + error.toString());
+    Logger.log('❌ sendEmailNotification Error:', error.toString());
     return { success: false, message: error.toString() };
   }
 }
+
 
 // ฟังก์ชันค้นหาอีเมลจากชื่ออาจารย์
 function findUserEmail(instructorName) {
@@ -1056,5 +1011,138 @@ function findUserEmail(instructorName) {
     Logger.log('findUserEmail Error: ' + errorMsg);
     return null;
   }
+}
+
+// ====================================
+// Test Functions
+// ====================================
+function testEmail() {
+  const testEmail = 'modtanoy.tanong@gmail.com';
+  
+  const testData = {
+    id: '12345',
+    course_code: 'TEST101',
+    course_name: 'วิชาทดสอบ',
+    instructor: 'ดร.ทดสอบ ระบบ',
+    semester: '1',
+    academic_year: '2567',
+    group: 'สาขาสุขภาพดิจิทัล',
+    status: 'approved',
+    submitted_date: '2024-11-28 10:30:00',
+    reviewer_notes: 'ทดสอบการส่งอีเมล'
+  };
+  
+  const result = sendEmailNotification(testData, testEmail, 'EDIT');
+  Logger.log('Test email result: ' + JSON.stringify(result));
+  
+  return result;
+}
+
+function testStatusChangeEmail() {
+  const testEmail = 'pormodtanoy@gmail.com';
+  
+  const testData = {
+    id: '12345',
+    course_code: 'TEST101',
+    course_name: 'วิชาทดสอบ',
+    instructor: 'ดร.ทดสอบ ระบบ',
+    semester: '1',
+    academic_year: '2567',
+    group: 'สาขาสุขภาพดิจิทัล',
+    status: 'revision',
+    submitted_date: '2024-11-28 10:30:00',
+    reviewer_notes: 'กรุณาแก้ไขรูปแบบการเขียนใหม่'
+  };
+  
+  const result = sendEmailNotification(testData, testEmail, 'STATUS_CHANGE');
+  Logger.log('Test status change email result: ' + JSON.stringify(result));
+  
+  return result;
+}
+
+
+// ====================================
+// Telegram Notification (แจ้งเตือนเมื่อส่งประมวลการสอน)
+// ====================================
+const TELEGRAM_BOT_TOKEN = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxx';   // ← แก้ไชจุดที่4 แก้เป็น Token จริงจาก BotFather
+const TELEGRAM_CHAT_ID  = 'xxxxxxxxxxxxxxxxxxxxxx';      // ← แก้ไขจุดที่ 5 แก้เป็น chat_id (เช่น -100xxxxxxxxxx)
+
+function sendTelegramNotification(syllabusData) {
+  try {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID ||
+        TELEGRAM_BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE' ||
+        TELEGRAM_CHAT_ID === 'YOUR_CHAT_ID_HERE') {
+      Logger.log('⚠️ Telegram config not set. Skipping.');
+      return { success: false, message: 'Config missing' };
+    }
+
+    const message =
+      `📤 *มีการส่งประมวลการสอนใหม่*\n\n` +
+      `📌 *รหัสวิชา:* ${syllabusData.course_code || '-'}\n` +
+      `📚 *ชื่อวิชา:* ${syllabusData.course_name || '-'}\n` +
+      `👨‍🏫 *ครูผู้สอน:* ${syllabusData.instructor || '-'}\n` +
+      `📆 *ภาคเรียน:* ${syllabusData.semester || '-'} / ${syllabusData.academic_year || '-'}\n` +
+      `👥 *กลุ่มเรียน:* ${syllabusData.group || '-'}\n` +
+      `✅ *สถานะ:* รอตรวจ (ผู้สอนได้กดยืนยันส่งแล้ว)\n` +
+      `\n🕒 ${Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm น.')}`;
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const payload = {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true
+    };
+
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    const code = response.getResponseCode();
+    const text = response.getContentText();
+    Logger.log(`📡 Telegram API Response [${code}]: ${text.substring(0, 300)}...`);
+
+    if (code === 200) {
+      const result = JSON.parse(text);
+      if (result.ok) {
+        Logger.log('✅ Telegram ส่งสำเร็จ');
+        return { success: true };
+      } else {
+        throw new Error(`Telegram error: ${result.description || 'Unknown'}`);
+      }
+    } else if (code === 400) {
+      throw new Error('Bad Request — ตรวจสอบ chat_id หรือ token');
+    } else if (code === 401) {
+      throw new Error('Invalid BOT_TOKEN — ตรวจสอบ token อีกครั้ง');
+    } else if (code === 403) {
+      throw new Error('Chat not found / bot not added — ตรวจสอบ chat_id และว่า bot อยู่ในกลุ่มแล้วหรือไม่');
+    } else {
+      throw new Error(`HTTP ${code}: ${text}`);
+    }
+
+  } catch (e) {
+    Logger.log('❌ Telegram send failed: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+// ฟังก์ชันทดสอบส่ง Telegram ด้วยข้อมูลตัวอย่าง
+function testTelegram() {
+  const testData = {
+    course_code: 'TEST101',
+    course_name: 'ระบบสารสนเทศ',
+    instructor: 'ทดสอบ ระบบ',
+    semester: '1',
+    academic_year: '2568',
+    group: 'IT',
+    status: 'pending'
+  };
+  Logger.log('🚀 เริ่มทดสอบ Telegram...');
+  const result = sendTelegramNotification(testData);
+  Logger.log('✅ ผลการทดสอบ:', JSON.stringify(result));
+  return result;
 }
 
