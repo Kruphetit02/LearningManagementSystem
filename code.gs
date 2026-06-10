@@ -1,8 +1,8 @@
 // ====================================
 // อ้างอิง : https://www.youtube.com/@Pormodtanoy/videos
 // ====================================
-const SPREADSHEET_ID = '1QMwunrikf3ZTrvdNBvtbmMaikwsjM5psDAHxP6tzfSs'; // แก้ไขจุดที่ 1 : ใส่ ID spreadsheet ของท่าน 
-const FOLDER_ID = '1NX3dZLuX1mwwzsKVWB1W-wJCCVRA7OFx'; // แก้ไขจุดที่ 2 :  ใส่ ID Folder  สำหรับเก็บไฟล์
+const SPREADSHEET_ID = '1VInU80stIVBeRx-B4oqBo50YMVJPI0VK65cJgcAaZuA'; // แก้ไขจุดที่ 1 : ใส่ ID spreadsheet ของท่าน 
+const FOLDER_ID = '1k82WN6jYWBH1qfNYW1J4LSA6Gf-gOoSB'; // แก้ไขจุดที่ 2 :  ใส่ ID Folder  สำหรับเก็บไฟล์
 
 // Sheet Names
 const SHEETS = {
@@ -31,7 +31,7 @@ function doGet() {
     }
     
     const output = HtmlService.createHtmlOutputFromFile('index1')
-      .setTitle('ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์')
+      .setTitle('ระบบจัดการประมวลการสอน')
       .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png') // แก้ไขจุดที่ 3 : เปลี่ยนภาพ favicon ของท่านโดยฝากภาพโลโกไว้บนเว็บฝากภาพฟรี https://pic.in.th/?lang=th
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -859,7 +859,7 @@ function sendEmailNotification(syllabusData, userEmail, action) {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 8px 0; color: #666;">รหัสวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_code}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">ชื่อวิชา:</td><td style="padding: 8px 0; color: #333; font-weight: 600;">${syllabusData.course_name}</td></tr>
-                <tr><td style="padding: 8px 0; color: #666;">ครูผู้สอน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.instructor}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">อาจารย์ผู้สอน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.instructor}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">ภาคเรียน/ปีการศึกษา:</td><td style="padding: 8px 0; color: #333;">${syllabusData.semester}/${syllabusData.academic_year}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">กลุ่มเรียน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.group}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px;">${statusThai}</span></td></tr>
@@ -881,8 +881,8 @@ function sendEmailNotification(syllabusData, userEmail, action) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร </strong> @canva AI</p>
-            <p>© ${new Date().getFullYear()}ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
+            <p>พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()} ระบบจัดการประมวลการสอน</p>
           </div>
         </div>
       `;
@@ -933,8 +933,8 @@ function sendEmailNotification(syllabusData, userEmail, action) {
           </div>
           
           <div style="text-align: center; margin-top: 20px; padding: 15px; color: #666; font-size: 12px;">
-            <p>พัฒนาโดย <strong>ครูชัยรัตน์ มานิช  โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร</strong> @canva AI</p>
-            <p>© ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</p>
+            <p>พัฒนาโดย <strong>พ่อมดตะนอย</strong> @canva AI</p>
+            <p>© ${new Date().getFullYear()} ระบบจัดการประมวลการสอน</p>
           </div>
         </div>
       `;
@@ -1080,7 +1080,7 @@ function sendTelegramNotification(syllabusData) {
       `📤 *มีการส่งประมวลการสอนใหม่*\n\n` +
       `📌 *รหัสวิชา:* ${syllabusData.course_code || '-'}\n` +
       `📚 *ชื่อวิชา:* ${syllabusData.course_name || '-'}\n` +
-      `👨‍🏫 *ครูผู้สอน:* ${syllabusData.instructor || '-'}\n` +
+      `👨‍🏫 *อาจารย์ผู้สอน:* ${syllabusData.instructor || '-'}\n` +
       `📆 *ภาคเรียน:* ${syllabusData.semester || '-'} / ${syllabusData.academic_year || '-'}\n` +
       `👥 *กลุ่มเรียน:* ${syllabusData.group || '-'}\n` +
       `✅ *สถานะ:* รอตรวจ (ผู้สอนได้กดยืนยันส่งแล้ว)\n` +

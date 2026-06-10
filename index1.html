@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์</title>
+  <title>ระบบจัดการประมวลการสอน</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -223,9 +223,9 @@
       secondary_action_color: "#64748b",
       font_family: "Sarabun",
       font_size: 16,
-      site_title: "ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์",
-      welcome_text: "ยินดีต้อนรับสู่ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์",
-      submit_button_text: "ส่งแผนการจัดการเรียนรู้",
+      site_title: "ระบบจัดการประมวลการสอน",
+      welcome_text: "ยินดีต้อนรับสู่ระบบจัดการประมวลการสอน",
+      submit_button_text: "ส่งประมวลการสอน",
       login_button_text: "เข้าสู่ระบบ"
     };
     
@@ -266,7 +266,7 @@
       secondary_action_color: "#64748b",
       font_family: "Sarabun",
       font_size: 16,
-      site_title: "ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์"
+      site_title: "ระบบจัดการประมวลการสอน"
     };
 
     // ปรับปรุงฟังก์ชัน initializeApp
@@ -607,7 +607,7 @@ function renderHomePage(config, baseSize) {
             <p style="font-size:${baseSize * 1.1}px;color:${textColor};
                       padding:0.4rem 1.2rem;border:2px solid #22c55e;
                       border-radius:9999px;display:inline-block;margin-top:0.5rem;">
-              จัดการแผนการเรียนรู้ได้อย่างมีประสิทธิภาพ
+              จัดการประมวลการสอนได้อย่างมีประสิทธิภาพ
             </p>
           </header>
  
@@ -618,7 +618,7 @@ function renderHomePage(config, baseSize) {
             </h2>
             <p style="font-size:${baseSize}px;color:${textColor};opacity:0.8;
                       line-height:1.6;margin-bottom:2rem;">
-              ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ ช่วยให้การส่งและตรวจสอบเอกสารเป็นไปอย่างรวดเร็วและมีประสิทธิภาพ
+              ระบบจัดการประมวลการสอนออนไลน์ ช่วยให้การส่งและตรวจสอบเอกสารเป็นไปอย่างรวดเร็วและมีประสิทธิภาพ
             </p>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
                         gap:1.5rem;margin-bottom:2rem;">
@@ -824,7 +824,7 @@ function renderSubmitForm(config, baseSize) {
  
           <div style="text-align:center;margin-bottom:2rem;">
             <h2 style="font-size:${baseSize*2}px;font-weight:700;color:${textColor};margin-bottom:0.5rem;">
-              แบบฟอร์มนำแผนการจัดการเรียนรู้
+              แบบฟอร์มนำส่งประมวลการสอน
             </h2>
             <p style="font-size:${baseSize}px;color:${textColor};opacity:0.7;">
               กรุณากรอกข้อมูลให้ครบถ้วนและตรวจสอบความถูกต้องก่อนนำส่ง
@@ -852,7 +852,7 @@ function renderSubmitForm(config, baseSize) {
                                     color:${textColor};margin-bottom:0.5rem;">
                         รหัสวิชา <span style="color:#dc3545;">*</span>
                       </label>
-                      <input type="text" id="courseCode" required placeholder="เช่น ว33101"
+                      <input type="text" id="courseCode" required placeholder="เช่น CS101"
                              style="${fieldStyle()}"
                              onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                              onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -862,7 +862,7 @@ function renderSubmitForm(config, baseSize) {
                                     color:${textColor};margin-bottom:0.5rem;">
                         ชื่อรายวิชา <span style="color:#dc3545;">*</span>
                       </label>
-                      <input type="text" id="courseName" required placeholder="เช่น วิทยาการคำนวณ 3"
+                      <input type="text" id="courseName" required placeholder="เช่น การเขียนโปรแกรมคอมพิวเตอร์"
                              style="${fieldStyle()}"
                              onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                              onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -871,9 +871,9 @@ function renderSubmitForm(config, baseSize) {
                   <div>
                     <label style="display:block;font-size:${baseSize*0.875}px;font-weight:600;
                                   color:${textColor};margin-bottom:0.5rem;">
-                      ครูผู้สอน <span style="color:#dc3545;">*</span>
+                      อาจารย์ผู้สอน <span style="color:#dc3545;">*</span>
                     </label>
-                    <input type="text" id="instructor" required placeholder="เช่น นายชัยรัตน์ มานิช"
+                    <input type="text" id="instructor" required placeholder="เช่น ดร.สมชาย ใจดี"
                            style="${fieldStyle()}"
                            onfocus="this.style.borderColor='${primaryColor}';this.style.boxShadow='0 0 0 3px ${primaryColor}20'"
                            onblur="this.style.borderColor='${bgColor}';this.style.boxShadow='none'">
@@ -903,6 +903,7 @@ function renderSubmitForm(config, baseSize) {
                       <option value="">เลือก</option>
                       <option value="1">ภาคเรียนที่ 1</option>
                       <option value="2">ภาคเรียนที่ 2</option>
+                      <option value="3">ภาคเรียนที่ 3</option>
                     </select>
                   </div>
                   <div>
@@ -910,7 +911,7 @@ function renderSubmitForm(config, baseSize) {
                                   color:${textColor};margin-bottom:0.5rem;">
                       ปีการศึกษา <span style="color:#dc3545;">*</span>
                     </label>
-                    <input type="text" id="academicYear" required placeholder="2569"
+                    <input type="text" id="academicYear" required placeholder="2567"
                            style="${fieldStyle()}"
                            onfocus="this.style.borderColor='${secondaryColor}'"
                            onblur="this.style.borderColor='${bgColor}'">
@@ -918,20 +919,15 @@ function renderSubmitForm(config, baseSize) {
                   <div>
                     <label style="display:block;font-size:${baseSize*0.875}px;font-weight:600;
                                   color:${textColor};margin-bottom:0.5rem;">
-                      กลุ่มสาระการเรียนรู้ <span style="color:#dc3545;">*</span>
+                      กลุ่มเรียน <span style="color:#dc3545;">*</span>
                     </label>
                     <select id="group" required style="${fieldStyle()}"
                             onfocus="this.style.borderColor='${secondaryColor}'"
                             onblur="this.style.borderColor='${bgColor}'">
-                      <option value="">เลือกกลุ่มสาระการเรียนรู้</option>
-                      <option value="ภาษาไทย">ภาษาไทย</option>
-                      <option value="คณิตศาสตร์">คณิตศาสตร์</option>
-                      <option value="วิทยาศาสตร์และเทคโนโลยี">วิทยาศาสตร์และเทคโนโลยี</option>
-                      <option value="สังคมศึกษา ศาสนา และวัฒนธรรม">สังคมศึกษา ศาสนา และวัฒนธรรม</option>
-                      <option value="สุขศึกษาและพลศึกษา">สุขศึกษาและพลศึกษา</option>
-                      <option value="ศิลปะ">ศิลปะ</option>
-                      <option value="การงานอาชีพ">การงานอาชีพ</option>
-                      <option value="ภาษาต่างประเทศ">ภาษาต่างประเทศ</option>
+                      <option value="">เลือกกลุ่ม</option>
+                      <option value="สาขาสุขภาพดิจิทัล">สาขาสุขภาพดิจิทัล</option>
+                      <option value="สาขาชีวการแพทย์">สาขาชีวการแพทย์</option>
+                      <option value="สาขาเทคโนโลยีสุขภาพ">สาขาเทคโนโลยีสุขภาพ</option>
                     </select>
                   </div>
                 </div>
@@ -954,7 +950,7 @@ function renderSubmitForm(config, baseSize) {
                      onmouseout="this.style.borderColor='#f59e0b';this.style.backgroundColor='white'">
                   <div style="font-size:${baseSize*2.5}px;margin-bottom:1rem;">📄</div>
                   <p style="font-size:${baseSize*0.875}px;font-weight:600;color:${textColor};margin-bottom:0.5rem;">
-                    อัปโหลดไฟล์แผนการจัดการเรียนรู้
+                    อัปโหลดไฟล์ประมวลการสอน
                   </p>
                   <p style="font-size:${baseSize*0.75}px;color:${textColor};opacity:0.7;margin-bottom:1rem;">
                     รองรับไฟล์ PDF และ DOCX (ขนาดไม่เกิน 10MB)
@@ -1258,10 +1254,10 @@ function renderFooter(config, baseSize) {
                    width:100%;">
       <div style="max-width:1400px;margin:0 auto;text-align:center;">
         <p style="font-size:${baseSize*0.875}px;color:${textColor};opacity:0.7;margin-bottom:0.5rem;">
-          พัฒนาโดย <strong style="color:${primaryColor};">ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง</strong> @ กรุงเทพมหานคร
+          พัฒนาโดย <strong style="color:${primaryColor};">พ่อมดตะนอย</strong> @พ่อมดไอที
         </p>
         <p style="font-size:${baseSize*0.75}px;color:${textColor};opacity:0.5;">
-          © ${new Date().getFullYear()} ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์ - สงวนลิขสิทธิ์
+          © ${new Date().getFullYear()} ระบบจัดการประมวลการสอน - สงวนลิขสิทธิ์
         </p>
       </div>
     </footer>
@@ -1545,12 +1541,12 @@ function renderNavbar({ gradient, activePage, ctaColor }) {
  
   return `
     <nav style="background:linear-gradient(135deg,${gradient});
-                box-shadow:0 4px 8px rgba(0,0,0,0.12);
+                box-shadow:0 2px 8px rgba(0,0,0,0.12);
                 position:sticky;top:0;z-index:100;">
       <div class="nav-inner">
         <div class="nav-brand">
-          <img src="https://img1.pic.in.th/images/wichakan.png" alt="Logo" style="height: 70px; width: auto; object-fit: contain;">
-          <h1>${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'}</h1>
+          <img src="https://lh3.googleusercontent.com/d/1osuHxECktGDtI5WOAtN5cjHBLD2UpA7l" alt="Logo">
+          <h1>${config.site_title || 'ระบบจัดการประมวลการสอน'}</h1>
         </div>
         <div class="nav-links">
           ${desktopLinks}
@@ -2068,7 +2064,7 @@ function generatePrintForm(data) {
             <!-- โลโก้ -->
             <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 6px;">
               <img 
-                src="${config.logo_url || 'https://img1.pic.in.th/images/logoc577678dae0d285f.png'}" 
+                src="${config.logo_url || 'https://img2.pic.in.th/pic/LOGO-pormodtanoy-V.2.png'}" 
                 alt="Logo"
                 style="
                   width: 90px; 
@@ -2080,11 +2076,11 @@ function generatePrintForm(data) {
             </div>
 
             <h1 style="font-size: 26px; font-weight: 700; margin: 0 0 6px 0; color: ${primaryColor};">
-              แบบฟอร์มนำส่งแผนการจัดการเรียนรู้
+              แบบฟอร์มนำส่งประมวลการสอน
             </h1>
 
             <p style="font-size: 14px; margin: 0; opacity: 0.8; color: ${textColor};">
-              ${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'}
+              ${config.site_title || 'ระบบจัดการประมวลการสอน'}
             </p>
           </div>
 
@@ -2114,7 +2110,7 @@ function generatePrintForm(data) {
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">${data.course_name}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">ครูผู้สอน:</td>
+            <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">อาจารย์ผู้สอน:</td>
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">${data.instructor}</td>
           </tr>
           <tr>
@@ -2162,7 +2158,7 @@ function generatePrintForm(data) {
               <div class="signature-line" style="border-top: 1px solid #000; padding-top: 5px;">
                 <p style="margin: 0; font-size: 13px;">ลงชื่อ ................................................</p>
                 <p style="margin: 3px 0 0 0; font-size: 13px;">(${data.instructor})</p>
-                <p style="margin: 3px 0 0 0; font-size: 13px; font-weight: 600;">ผู้ส่ง / ครูผู้สอน</p>
+                <p style="margin: 3px 0 0 0; font-size: 13px; font-weight: 600;">ผู้ส่ง / อาจารย์ผู้สอน</p>
                 <p style="margin: 6px 0 0 0; font-size: 13px;">วันที่ ......... / ......... / .........</p>
               </div>
             </div>
@@ -2188,8 +2184,8 @@ function generatePrintForm(data) {
           เอกสารฉบับนี้สร้างโดยระบบอัตโนมัติ
         </p>
         <p style="font-size: 12px; color: ${textColor}; opacity: 0.6; margin: 5px 0 0 0;">
-          ${config.site_title || 'ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์'} © ${new Date().getFullYear()}
-          พัฒนาโดย ครูชัยรัตน์ มานิช โรงเรียนวิชูทิศ สำนักงานเขตดินแดง กรุงเทพมหานคร
+          ${config.site_title || 'ระบบจัดการประมวลการสอน'} © ${new Date().getFullYear()}
+          พัฒนาโดย พ่อมดตะนอย @สุขภาพดิจิทัล
         </p>
       </div>
     </div>
@@ -2790,7 +2786,7 @@ function editItem(id) {
           </div>
           <div>
             <label style="display: block; font-size: ${baseSize * 0.875}px; font-weight: 600; color: ${textColor}; margin-bottom: 0.5rem;">
-              ครูผู้สอน <span style="color: red;">*</span>
+              อาจารย์ผู้สอน <span style="color: red;">*</span>
             </label>
             <input type="text" id="editInstructor" value="${item.instructor || ''}" required style="width: 100%; padding: 0.75rem; border: 2px solid ${bgColor}; border-radius: 0.5rem; font-size: ${baseSize}px; color: ${textColor};">
           </div>
