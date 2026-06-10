@@ -30,7 +30,7 @@ function doGet() {
       initializeSheets();
     }
     
-    const output = HtmlService.createHtmlOutputFromFile('index1')
+    const output = HtmlService.createHtmlOutputFromFile('index')
       .setTitle('ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์')
       .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png') // แก้ไขจุดที่ 3 : เปลี่ยนภาพ favicon ของท่านโดยฝา
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -890,7 +890,7 @@ function sendEmailNotification(syllabusData, userEmail, action) {
                 <tr><td style="padding: 8px 0; color: #666;">กลุ่มเรียน:</td><td style="padding: 8px 0; color: #333;">${syllabusData.group}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">หน่วยการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_units || 0}/${syllabusData.total_learning_units || 0}</td></tr>
                 <tr><td style="padding: 8px 0; color: #666;">แผนการเรียนรู้:</td><td style="padding: 8px 0; color: #333;">${syllabusData.submitted_learning_plans || 0}/${syllabusData.total_learning_plans || 0}</td></tr>
-                <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 4px;">${statusThai}</span></td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">สถานะ:</td><td style="padding: 8px 0;"><span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 4px;">ตรวจแล้ว</span></td></tr>
                 <tr><td style="padding: 8px 0; color: #666; vertical-align: top;">หมายเหตุ:</td><td style="padding: 8px 0; color: #333;">${syllabusData.reviewer_notes || '-'}</td></tr>
               </table>
             </div>
