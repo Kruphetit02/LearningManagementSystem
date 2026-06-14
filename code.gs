@@ -30,7 +30,7 @@ function doGet() {
       initializeSheets();
     }
     
-    const output = HtmlService.createHtmlOutputFromFile('index1')
+    const output = HtmlService.createHtmlOutputFromFile('index')
       .setTitle('ระบบบริหารจัดการแผนการเรียนรู้ออนไลน์')
       .setFaviconUrl('https://img1.pic.in.th/images/logoc577678dae0d285f.png') // แก้ไขจุดที่ 3 : เปลี่ยนภาพ favicon ของท่านโดยฝากภาพโลโกไว้บนเว็บฝากภาพฟรี https://pic.in.th/?lang=th
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
