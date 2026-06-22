@@ -2169,15 +2169,15 @@ function generatePrintForm(data) {
           <tr>
             <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">หน่วยการเรียนรู้ :</td>
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; white-space: nowrap;">หน่วยการเรียนรู้ที่ 
-            <span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block;">
-            ${data.unit_number || '-'}</span>จากทั้งหมด<span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block;">${data.total_units || '-'}</span> หน่วย
+            <span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block; min-width: 60px; text-align: center; ">
+            ${data.unit_number || '-'}</span>จากทั้งหมด<span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block; min-width: 60px; text-align: center;">${data.total_units || '-'}</span> หน่วย
             </td>
           </tr>
             <tr>
             <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">แผนการเรียนรู้ :</td>
             <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; white-space: nowrap;">แผนการเรียนรู้ที่ 
-            <span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block;">
-            ${data.lesson_number || '-'}</span>จากทั้งหมด<span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block;">${data.total_units || '-'}</span> แผน
+             <span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block; min-width: 60px; text-align: center;">
+            ${data.lesson_number || '-'}</span>จากทั้งหมด <span style="font-weight: 700; color: #1a202c; padding: 1px 8px; border-radius: 4px; display: inline-block; min-width: 60px; text-align: center;"> ${data.total_units || '-'}</span> แผน
             </td>
           </tr>
           
